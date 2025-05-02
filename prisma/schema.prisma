@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  id            Int           @id @default(autoincrement())
+  name          String
+  phone         String
+  dob           DateTime
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  familyGroupId Int?
+  familyGroup   FamilyGroup?  @relation(fields: [familyGroupId], references: [id])
+  cases         Case[]
+  tokens        Token[]
+}
+
+model FamilyGroup {
+  id          Int       @id @default(autoincrement())
+  name        String
+  monthlyDues Float?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  patients    Patient[]
+}
+
+model Case {
+  id            Int           @id @default(autoincrement())
+  patientId     Int
+  date          DateTime      @default(now())
+  reason        String
+  notes         String?
+  paymentStatus PaymentStatus
+  amountCharged Float
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  patient       Patient       @relation(fields: [patientId], references: [id])
+  prescriptions Prescription[]
+}
+
+model Prescription {
+  id        Int      @id @default(autoincrement())
+  caseId    Int
+  medicines String[] // JSON array of medicine IDs
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  case      Case     @relation(fields: [caseId], references: [id])
+}
+
+model Token {
+  id          Int         @id @default(autoincrement())
+  number      Int
+  patientId   Int
+  isEmergency Boolean     @default(false)
+  date        DateTime    @default(now())
+  status      TokenStatus @default(WAITING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  patient     Patient     @relation(fields: [patientId], references: [id])
+}
+
+model Medicine {
+  id        Int      @id @default(autoincrement())
+  name      String
+  stock     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PaymentStatus {
+  PAID
+  PARTIAL
+  UNPAID
+}
+
+enum TokenStatus {
+  WAITING
+  CURRENT
+  COMPLETED
+}
