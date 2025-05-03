@@ -89,7 +89,9 @@ export function AppSidebar() {
         <SidebarMenu>
           {filteredMenuItems.map((item) => (
             <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.title}>
+              <SidebarMenuButton asChild isActive={item.href === '/'
+      ? pathname === '/'
+      : pathname === item.href || pathname.startsWith(`${item.href}/`)} tooltip={item.title}>
                 <Link href={item.href}>
                   <item.icon className="h-6 w-6" />
                   {expanded && <span>{item.title}</span>}
