@@ -58,7 +58,7 @@ const patient = {
 export default function PatientDetailPage({ params }) {
   const patientId = params.id
 
-  const getPaymentStatusColor = (status) => {
+  const getPaymentStatusColor = (status :string) => {
     switch (status) {
       case "Paid":
         return "bg-green-100 text-green-800"
