@@ -58,11 +58,11 @@ const family = {
 
 interface PageProps {
     params: {
-      id: string; // <-- Make sure 'id' matches your dynamic route segment, e.g., /your-route/[id]/page.tsx
+        id: string; // <-- Make sure 'id' matches your dynamic route segment, e.g., /your-route/[id]/page.tsx
     };
     // searchParams?: { [key: string]: string | string[] | undefined }; // Optional
-  }
-  
+}
+
 
 export default function FamilyDetailPage() {
     const params = useParams()
@@ -86,28 +86,28 @@ export default function FamilyDetailPage() {
 
     const handleDeleteFamily = async (familyId: number) => {
         setIsSubmitting(true)
-      
+
         try {
-          await new Promise(resolve => setTimeout(resolve, 1000)) // Simulated API call
-      
-          toast({
-            title: "Family deleted successfully",
-            description: "The family group has been removed.",
-          })
-      
-          setOpen(false) // Close the dialog
-          router.push("/families") // Redirect
+            await new Promise(resolve => setTimeout(resolve, 1000)) // Simulated API call
+
+            toast({
+                title: "Family deleted successfully",
+                description: "The family group has been removed.",
+            })
+
+            setOpen(false) // Close the dialog
+            router.push("/families") // Redirect
         } catch (error) {
-          toast({
-            title: "Error deleting family",
-            description: "There was a problem deleting the family. Please try again.",
-            variant: "destructive",
-          })
+            toast({
+                title: "Error deleting family",
+                description: "There was a problem deleting the family. Please try again.",
+                variant: "destructive",
+            })
         } finally {
-          setIsSubmitting(false)
+            setIsSubmitting(false)
         }
-      }
-      
+    }
+
 
     // Combine and sort all cases
     const allCases = family.members.flatMap(member =>
