@@ -80,7 +80,7 @@ export default function NewPatientFamilyPage() {
         description: `${formData.familyName} has been created with ${formData.selectedPatients.length} members.`,
       })
 
-      router.push("/patients")
+      router.push("/families")
     } catch (error) {
       toast({
         title: "Error creating family group",
