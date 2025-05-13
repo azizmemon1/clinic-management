@@ -121,12 +121,10 @@ export default function PatientDetailPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="sm" asChild className="mr-4">
-          <Link href="/patients">
+      <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Patients
-          </Link>
-        </Button>
+            Back
+          </Button>
         <h1 className="text-3xl font-bold">{patient.name}</h1>
       </div>
 
