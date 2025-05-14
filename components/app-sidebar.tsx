@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, Users, Clock, Stethoscope, Pill, CreditCard, LogOut, Users2 } from "lucide-react"
+import { Home, Users, Clock, Stethoscope, Pill, CreditCard, LogOut, Users2, NotebookTabs } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -50,6 +50,12 @@ export function AppSidebar() {
       icon: Stethoscope,
       href: "/doctor",
       role: ["doctor"],
+    },
+    {
+      title: "Cases",
+      icon: NotebookTabs, // You can change this to another icon if preferred
+      href: "/cases",
+      role: ["staff", "doctor"],
     },
     // {
     //   title: "Medicine",

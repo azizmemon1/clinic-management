@@ -232,7 +232,7 @@ export default function DoctorPage() {
                         </Link>
                       </Button>
                       <Button asChild>
-                        <Link href={`/doctor/new-case/${currentPatient.id}`}>Add New Case</Link>
+                        <Link href={`/cases/new/${currentPatient.id}`}>Add New Case</Link>
                       </Button>
                     </div>
                   </div>
