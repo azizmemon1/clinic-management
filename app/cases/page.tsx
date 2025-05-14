@@ -128,128 +128,90 @@ const fetchCases = async (): Promise<Case[]> => {
 export default function CasesPage() {
   const router = useRouter();
   const [cases, setCases] = useState<Case[]>([]);
-  const [filteredCases, setFilteredCases] = useState<Case[]>([])
+  const [originalCases, setOriginalCases] = useState<Case[]>([]); // this is temp for local state in real api we don't need this
+  // const [filteredCases, setFilteredCases] = useState<Case[]>([])
   const [isLoading, setIsLoading] = useState(true);
   // pages states
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   // filters states 
   const [searchQuery, setSearchQuery] = useState(""); // TODO: add debounce search
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  const totalItems = cases.length;
+  const [totalItems, setTotalItems] = useState(0);
   const totalPages = Math.ceil(totalItems / rowsPerPage);
 
-  // const filteredCases = useMemo(async () => {
-  //   await loadData();
-  //   const from = dateRange?.from ? startOfDay(dateRange.from) : undefined;
-  //   const to = dateRange?.to ? endOfDay(dateRange.to) : undefined;
-
-  //   setIsLoading(true);
-  //   // mock api call
-  //   // Simulate network delay
-  //   await new Promise((resolve) => setTimeout(resolve, 500));
-  //   setIsLoading(false);
-  
-  //   return cases.filter((c) => {
-  //     const matchesSearch =
-  //       c.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //       c.reason.toLowerCase().includes(searchQuery.toLowerCase());
-
-  //       const caseDate = startOfDay(new Date(c.date));
-  //       let matchesDate = true;
-
-  //       if (from && to && isSameDay(from, to)) {
-  //         // Single day filter
-  //         matchesDate = isSameDay(caseDate, from);
-  //       } else if (from && to) {
-  //         matchesDate = isWithinInterval(caseDate, { start: from, end: to });
-  //       } else if (from) {
-  //         matchesDate = isAfter(caseDate, from) || isSameDay(caseDate, from);
-  //       } else if (to) {
-  //         matchesDate = isBefore(caseDate, to) || isSameDay(caseDate, to);
-  //       }
-
-  //     const matchesStatus =
-  //       statusFilter === "All" || c.paymentStatus === statusFilter;
-
-  //     return matchesSearch && matchesDate && matchesStatus;
-  //   });
-  // }, [cases, searchQuery, dateRange, statusFilter]);
-
-  // Async function to load and filter data
-const loadFilteredCases = async () => {
-  setIsLoading(true);
-  await loadData(); // Your data loading function
-  const from = dateRange?.from ? startOfDay(dateRange.from) : undefined;
-  const to = dateRange?.to ? endOfDay(dateRange.to) : undefined;
-
-  // Mock API call simulation
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const filtered = cases.filter((c) => {
-    const matchesSearch =
-      c.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.reason.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const caseDate = startOfDay(new Date(c.date));
-    let matchesDate = true;
-
-    if (from && to && isSameDay(from, to)) {
-      matchesDate = isSameDay(caseDate, from);
-    } else if (from && to) {
-      matchesDate = isWithinInterval(caseDate, { start: from, end: to });
-    } else if (from) {
-      matchesDate = isAfter(caseDate, from) || isSameDay(caseDate, from);
-    } else if (to) {
-      matchesDate = isBefore(caseDate, to) || isSameDay(caseDate, to);
-    }
-
-    const matchesStatus =
-      statusFilter === "All" || c.paymentStatus === statusFilter;
-
-    return matchesSearch && matchesDate && matchesStatus;
-  });
-
-  setFilteredCases(filtered);
-  setIsLoading(false);
-};
-
-// Run the filtering logic whenever `cases`, `searchQuery`, `dateRange`, or `statusFilter` change
-useEffect(() => {
-  loadFilteredCases();
-}, [searchQuery, dateRange, statusFilter]);
-
-  const paginatedCases = useMemo(() => {
-    return filteredCases.slice(
-      (currentPage - 1) * rowsPerPage,
-      currentPage * rowsPerPage
-    );
-  }, [filteredCases, currentPage, rowsPerPage]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages || 1); // fallback to 1 if totalPages = 0
-    }
-  }, [totalPages]);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const fetchFilteredCases = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchCases();
-      setCases(data);
-      // toast({ title: "Data loaded successfully" });
+      // In real API, this would be an API call:
+      // const params = new URLSearchParams({
+      //   page: filters.page.toString(),
+      //   pageSize: filters.pageSize.toString(),
+      //   ...(filters.search && { search: filters.search }),
+      //   ...(filters.status && filters.status !== 'All' && { status: filters.status }),
+      //   ...(filters.dateRange?.from && { dateFrom: filters.dateRange.from.toISOString() }),
+      //   ...(filters.dateRange?.to && { dateTo: filters.dateRange.to.toISOString() })
+      // });
+      // const response = await fetch(`/api/cases?${params}`);
+      // return response.json();
+      
+
+      const from = dateRange?.from ? startOfDay(dateRange.from) : undefined;
+      const to = dateRange?.to ? endOfDay(dateRange.to) : undefined;
+      
+      // For now, do client-side filtering
+      const allCases = await fetchCases();
+
+      const filtered = allCases.filter((c) => {
+        const matchesSearch =
+          c.patientName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+          c.reason.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+  
+        const caseDate = startOfDay(new Date(c.date));
+        let matchesDate = true;
+  
+        if (from && to && isSameDay(from, to)) {
+          matchesDate = isSameDay(caseDate, from);
+        } else if (from && to) {
+          matchesDate = isWithinInterval(caseDate, { start: from, end: to });
+        } else if (from) {
+          matchesDate = isAfter(caseDate, from) || isSameDay(caseDate, from);
+        } else if (to) {
+          matchesDate = isBefore(caseDate, to) || isSameDay(caseDate, to);
+        }
+  
+        const matchesStatus =
+          statusFilter === "All" || c.paymentStatus === statusFilter;
+  
+        return matchesSearch && matchesDate && matchesStatus;
+      });
+
+      // Apply pagination
+      const start = (currentPage - 1) * rowsPerPage;
+      const paginatedCases = filtered.slice(start, start + rowsPerPage);
+
+      setCases(paginatedCases);
+      setTotalItems(filtered.length);
     } catch (error) {
-      toast({ title: "Failed to load data", variant: "destructive" });
+      toast({
+        title: "Failed to load cases",
+        description: "Please try again later",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // call the api to get the filtered cases
+    // currently this act as a mock api call
+    fetchFilteredCases();
+  }, [debouncedSearchQuery, dateRange, statusFilter, currentPage, rowsPerPage]);
 
   const downloadCasesSheet = () => {
     const worksheet = XLSX.utils.json_to_sheet(cases);
@@ -258,6 +220,14 @@ useEffect(() => {
 
     XLSX.writeFile(workbook, "patient-cases.xlsx");
   };
+
+  // Add reset filters function
+const resetFilters = () => {
+  setSearchQuery("");
+  setDateRange(undefined);
+  setStatusFilter("All");
+  setCurrentPage(1);
+};
 
   return (
     <div className="space-y-4">
@@ -294,9 +264,15 @@ useEffect(() => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full sm:w-64"
             />
-
+       
             {/* Date range & status on the right */}
-            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+              {/* Reset Filters Button */}
+              {(searchQuery || dateRange || statusFilter !== "All") && (
+                <Button variant="ghost" onClick={resetFilters}>
+                  Reset Filters
+                </Button>
+              )}
               {/* Date Range Picker */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -368,11 +344,11 @@ useEffect(() => {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : paginatedCases.length > 0 ? (
-                paginatedCases.map((caseItem) => (
+              ) : cases.length > 0 ? (
+                cases.map((caseItem) => (
                   <TableRow
                     key={caseItem.id}
-                    onClick={() => router.push(`/cases/${caseItem.id}`)}
+                    // onClick={() => router.push(`/cases/${caseItem.id}`)}
                   >
                     <TableCell className="font-medium">
                       {caseItem.patientName}
