@@ -4,8 +4,21 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Stethoscope } from "lucide-react"
 
-// Mock queue data
-const initialQueueData = {
+interface Token {
+  number: number
+  patient: { name: string }
+  isEmergency: boolean
+  status?: 'current' | 'waiting' | 'completed' | 'hold'
+}
+
+interface QueueData {
+  currentToken: number
+  nextTokens: Token[]
+  lastCalled: Token[]
+}
+
+// Initial data that matches the management page structure
+const initialDisplayData: QueueData = {
   currentToken: 14,
   nextTokens: [
     { number: 15, patient: { name: "Sarah Johnson" }, isEmergency: false },
@@ -16,31 +29,88 @@ const initialQueueData = {
   lastCalled: [
     { number: 13, patient: { name: "Jennifer Taylor" }, isEmergency: false },
     { number: 12, patient: { name: "Robert Anderson" }, isEmergency: false },
-  ],
+  ]
 }
 
 export default function QueueDisplayPage() {
-  const [queueData, setQueueData] = useState(initialQueueData)
+  const [queueData, setQueueData] = useState<QueueData>(initialDisplayData)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [blink, setBlink] = useState(false)
+
+  // Blink effect for emergency tokens
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBlink(prev => !prev)
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Update time every minute
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
     }, 60000)
-
     return () => clearInterval(timer)
   }, [])
 
-  // In a real app, this would use Socket.io to get real-time updates
-  // For demo purposes, we'll simulate updates every 10 seconds
+  // Sync with queue management page using localStorage
   useEffect(() => {
-    const timer = setInterval(() => {
-      // Simulate queue movement (not needed for demo, but would be here in real app)
-    }, 10000)
+    const updateFromStorage = () => {
+      const storedQueue = localStorage.getItem('queueData')
+      if (storedQueue) {
+        try {
+          const parsedData = JSON.parse(storedQueue)
+          
+          // Transform the management data to display format
+          const currentTokenObj = parsedData.tokens.find((t: any) => t.status === 'current')
+          const waitingTokens = parsedData.tokens.filter((t: any) => t.status === 'waiting')
+          const completedTokens = parsedData.completedTokens.slice(0, 2) // Show last 2 completed
+          
+          setQueueData({
+            currentToken: currentTokenObj?.number || 0,
+            nextTokens: waitingTokens.map((t: any) => ({
+              number: t.number,
+              patient: t.patient,
+              isEmergency: t.isEmergency
+            })),
+            lastCalled: completedTokens.map((t: any) => ({
+              number: t.number,
+              patient: t.patient,
+              isEmergency: t.isEmergency
+            }))
+          })
+        } catch (error) {
+          console.error("Error parsing queue data:", error)
+          // Fallback to initial data if parsing fails
+          setQueueData(initialDisplayData)
+        }
+      } else {
+        // Use initial data if nothing in storage
+        setQueueData(initialDisplayData)
+      }
+    }
 
-    return () => clearInterval(timer)
+    // Initial load
+    updateFromStorage()
+
+    // Listen for changes
+    window.addEventListener('storage', updateFromStorage)
+
+    // Polling fallback every 2 seconds
+    const pollInterval = setInterval(updateFromStorage, 2000)
+
+    return () => {
+      window.removeEventListener('storage', updateFromStorage)
+      clearInterval(pollInterval)
+    }
   }, [])
+
+  // Sort tokens: emergencies first, then regular tokens
+  const sortedTokens = [...queueData.nextTokens].sort((a, b) => {
+    if (a.isEmergency && !b.isEmergency) return -1
+    if (!a.isEmergency && b.isEmergency) return 1
+    return a.number - b.number
+  })
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -63,7 +133,9 @@ export default function QueueDisplayPage() {
               <CardContent className="p-8 flex flex-col items-center justify-center">
                 <div className="text-8xl font-bold mb-4">#{queueData.currentToken}</div>
                 <div className="text-2xl">
-                  {queueData.nextTokens.length > 0 && queueData.nextTokens[0].patient.name}
+                  {queueData.nextTokens.find(t => t.number === queueData.currentToken)?.patient.name || 
+                   sortedTokens[0]?.patient.name || 
+                   "None"}
                 </div>
               </CardContent>
             </Card>
@@ -75,6 +147,9 @@ export default function QueueDisplayPage() {
                   <CardContent className="p-4 flex justify-between items-center">
                     <div className="text-xl font-bold">#{token.number}</div>
                     <div>{token.patient.name}</div>
+                    {token.isEmergency && (
+                      <div className="px-2 py-1 bg-red-700 text-white text-xs rounded-full">Emergency</div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -84,16 +159,24 @@ export default function QueueDisplayPage() {
           <div className="md:col-span-2">
             <h2 className="text-2xl font-bold mb-4">Waiting List</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {queueData.nextTokens.map((token) => (
+              {sortedTokens.map((token) => (
                 <Card
                   key={token.number}
-                  className={token.isEmergency ? "bg-red-900 border-red-700" : "bg-blue-900 border-blue-700"}
+                  className={
+                    token.isEmergency 
+                      ? blink 
+                        ? "bg-red-900 border-red-700" 
+                        : "bg-red-800 border-red-600"
+                      : "bg-blue-900 border-blue-700"
+                  }
                 >
                   <CardContent className="p-4 flex justify-between items-center">
                     <div className="text-2xl font-bold">#{token.number}</div>
                     <div className="text-lg">{token.patient.name}</div>
                     {token.isEmergency && (
-                      <div className="px-2 py-1 bg-red-700 text-white text-xs rounded-full">Emergency</div>
+                      <div className="px-2 py-1 bg-red-700 text-white text-xs rounded-full animate-pulse">
+                        Emergency
+                      </div>
                     )}
                   </CardContent>
                 </Card>

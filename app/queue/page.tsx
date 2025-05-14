@@ -513,4 +513,6 @@ export default function QueuePage() {
       </div>
     </RouteGuard>
   )
+  // After any state update in your management page, add:
+localStorage.setItem('queueData', JSON.stringify(queueData))
 }
