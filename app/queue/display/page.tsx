@@ -17,7 +17,6 @@ interface QueueData {
   lastCalled: Token[]
 }
 
-// Initial data that matches the management page structure
 const initialDisplayData: QueueData = {
   currentToken: 14,
   nextTokens: [
@@ -81,12 +80,8 @@ export default function QueueDisplayPage() {
           })
         } catch (error) {
           console.error("Error parsing queue data:", error)
-          // Fallback to initial data if parsing fails
           setQueueData(initialDisplayData)
         }
-      } else {
-        // Use initial data if nothing in storage
-        setQueueData(initialDisplayData)
       }
     }
 
