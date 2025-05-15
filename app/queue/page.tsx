@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +12,6 @@ import { RouteGuard } from "@/components/route-guard"
 import { useRouter } from "next/navigation"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-// Define TokenStatus as a union of string literals
 const TOKEN_STATUSES = ['current', 'waiting', 'completed', 'hold'] as const
 type TokenStatus = typeof TOKEN_STATUSES[number]
 
@@ -26,7 +25,7 @@ interface Token {
   number: number
   patient: Patient
   isEmergency: boolean
-  status: TokenStatus // Use the TokenStatus type here
+  status: TokenStatus
   holdAt?: string
   completedAt?: string
 }
@@ -68,6 +67,19 @@ export default function QueuePage() {
   const [holdPage, setHoldPage] = useState(1)
   const [completedPage, setCompletedPage] = useState(1)
 
+  // Load data from localStorage on initial render
+  useEffect(() => {
+    const storedData = localStorage.getItem('queueData')
+    if (storedData) {
+      setQueueData(JSON.parse(storedData))
+    }
+  }, [])
+
+  // Save to localStorage whenever queueData changes
+  useEffect(() => {
+    localStorage.setItem('queueData', JSON.stringify(queueData))
+  }, [queueData])
+
   const getStatusBadge = (status: TokenStatus, isEmergency: boolean) => {
     if (isEmergency) return <Badge className="bg-red-500">Emergency</Badge>
     switch (status) {
@@ -79,7 +91,6 @@ export default function QueuePage() {
     }
   }
 
-  // Organize tokens: current → emergencies → regular
   const getDisplayTokens = () => {
     const current = queueData.tokens.find(t => t.status === "current")
     const emergencies = queueData.tokens.filter(t => t.status === "waiting" && t.isEmergency)
@@ -92,7 +103,7 @@ export default function QueuePage() {
       const current = prev.tokens.find(t => t.status === "current")
       const completedPatient = current ? {
         ...current,
-        status: "completed" as const, // Explicitly type as TokenStatus
+        status: "completed" as const,
         completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       } : null
       
@@ -116,32 +127,24 @@ export default function QueuePage() {
 
   const moveToNextPosition = (tokenId: number) => {
     setQueueData(prev => {
-      // Find the token we want to move
       const tokenToMove = prev.tokens.find(t => t.id === tokenId);
       if (!tokenToMove) return prev;
   
-      // Filter out the token we're moving
       const otherTokens = prev.tokens.filter(t => t.id !== tokenId);
-  
-      // Find current token and emergency tokens
       const currentToken = prev.tokens.find(t => t.status === "current");
       const emergencyTokens = prev.tokens.filter(t => t.isEmergency && t.status === "waiting");
   
-      // Determine where to insert the token
       let insertPosition = 0;
       
-      // If there's a current token, insert after it
       if (currentToken) {
         insertPosition = otherTokens.findIndex(t => t.id === currentToken.id) + 1;
       }
       
-      // If there are emergencies, insert after the last emergency
       if (emergencyTokens.length > 0) {
         const lastEmergency = emergencyTokens[emergencyTokens.length - 1];
         insertPosition = otherTokens.findIndex(t => t.id === lastEmergency.id) + 1;
       }
   
-      // Create the new tokens array with the moved token in the correct position
       const newTokens = [
         ...otherTokens.slice(0, insertPosition),
         tokenToMove,
@@ -195,7 +198,6 @@ export default function QueuePage() {
     })
   }
 
-  // Paginated data
   const displayTokens = getDisplayTokens()
   const paginatedActive = displayTokens.slice((activePage - 1) * rowsPerPage, activePage * rowsPerPage)
   const paginatedHold = queueData.onHoldTokens.slice((holdPage - 1) * rowsPerPage, holdPage * rowsPerPage)
@@ -276,7 +278,6 @@ export default function QueuePage() {
               </CardHeader>
               
               <CardContent>
-                {/* Active Queue */}
                 <TabsContent value="active" className="space-y-4">
                   <div className="rounded-md border">
                     <Table>
@@ -353,7 +354,6 @@ export default function QueuePage() {
                   </div>
                 </TabsContent>
 
-                {/* On Hold */}
                 <TabsContent value="hold" className="space-y-4">
                   <div className="rounded-md border">
                     <Table>
@@ -394,7 +394,7 @@ export default function QueuePage() {
                         value={`${rowsPerPage}`}
                         onValueChange={val => {
                           setRowsPerPage(Number(val))
-                          setActivePage(1)
+                          setHoldPage(1)
                         }}
                       >
                         <SelectTrigger className="h-8 w-[70px]">
@@ -411,16 +411,16 @@ export default function QueuePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={activePage === 1}
-                        onClick={() => setActivePage(p => Math.max(p - 1, 1))}
+                        disabled={holdPage === 1}
+                        onClick={() => setHoldPage(p => Math.max(p - 1, 1))}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={activePage * rowsPerPage >= displayTokens.length}
-                        onClick={() => setActivePage(p => p + 1)}
+                        disabled={holdPage * rowsPerPage >= queueData.onHoldTokens.length}
+                        onClick={() => setHoldPage(p => p + 1)}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -428,7 +428,6 @@ export default function QueuePage() {
                   </div>
                 </TabsContent>
 
-                {/* Completed */}
                 <TabsContent value="completed" className="space-y-4">
                   <div className="rounded-md border">
                     <Table>
@@ -473,7 +472,7 @@ export default function QueuePage() {
                         value={`${rowsPerPage}`}
                         onValueChange={val => {
                           setRowsPerPage(Number(val))
-                          setActivePage(1)
+                          setCompletedPage(1)
                         }}
                       >
                         <SelectTrigger className="h-8 w-[70px]">
@@ -490,16 +489,16 @@ export default function QueuePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={activePage === 1}
-                        onClick={() => setActivePage(p => Math.max(p - 1, 1))}
+                        disabled={completedPage === 1}
+                        onClick={() => setCompletedPage(p => Math.max(p - 1, 1))}
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={activePage * rowsPerPage >= displayTokens.length}
-                        onClick={() => setActivePage(p => p + 1)}
+                        disabled={completedPage * rowsPerPage >= queueData.completedTokens.length}
+                        onClick={() => setCompletedPage(p => p + 1)}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
@@ -513,6 +512,4 @@ export default function QueuePage() {
       </div>
     </RouteGuard>
   )
-  // After any state update in your management page, add:
-localStorage.setItem('queueData', JSON.stringify(queueData))
 }

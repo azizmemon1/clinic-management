@@ -12,7 +12,6 @@ import { toast } from "@/components/ui/use-toast"
 import { ArrowLeft, Search, UserPlus } from "lucide-react"
 import { RouteGuard } from "@/components/route-guard"
 
-// Mock patients data
 const mockPatients = [
   { id: 1, name: "John Smith", phone: "555-123-4567" },
   { id: 2, name: "Sarah Johnson", phone: "555-234-5678" },
@@ -62,16 +61,42 @@ export default function NewTokenPage() {
     setIsSubmitting(true)
 
     try {
-      // In a real app, this would be an API call to generate a token
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Get current queue data from localStorage
+      const queueData = JSON.parse(localStorage.getItem('queueData') || '{"tokens":[],"onHoldTokens":[],"completedTokens":[]}')
+      
+      // Generate new token number (increment highest existing number)
+      const allTokens = [...queueData.tokens, ...queueData.onHoldTokens, ...queueData.completedTokens]
+      const highestTokenNumber = allTokens.length > 0 
+        ? Math.max(...allTokens.map(t => t.number))
+        : 13 // Starting number if no tokens exist
+      const newTokenNumber = highestTokenNumber + 1
+
+      // Create new token
+      const newToken = {
+        id: Date.now(), // Unique ID
+        number: newTokenNumber,
+        patient: selectedPatient!,
+        isEmergency,
+        status: "waiting"
+      }
+
+      // Update queue data
+      const updatedQueueData = {
+        ...queueData,
+        tokens: [...queueData.tokens, newToken]
+      }
+
+      // Save to localStorage
+      localStorage.setItem('queueData', JSON.stringify(updatedQueueData))
 
       toast({
         title: "Token generated successfully",
-        description: `Token #15 has been assigned to ${selectedPatient?.name}.`,
+        description: `Token #${newTokenNumber} has been assigned to ${selectedPatient?.name}.`,
       })
 
       router.push("/queue")
     } catch (error) {
+      console.error("Error generating token:", error)
       toast({
         title: "Error generating token",
         description: "There was a problem generating the token. Please try again.",
