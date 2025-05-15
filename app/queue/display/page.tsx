@@ -4,15 +4,25 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Stethoscope } from "lucide-react"
 
+type TokenStatus = 'current' | 'waiting' | 'completed' | 'hold'
+
+interface Patient {
+  id: number
+  name: string
+}
+
 interface Token {
+  id: number
   number: number
-  patient: { name: string }
+  patient: Patient
   isEmergency: boolean
-  status?: 'current' | 'waiting' | 'completed' | 'hold'
+  status: TokenStatus
+  holdAt?: string
+  completedAt?: string
 }
 
 interface QueueData {
-  currentToken: number
+  currentToken: number | null
   nextTokens: Token[]
   lastCalled: Token[]
 }
@@ -20,14 +30,14 @@ interface QueueData {
 const initialDisplayData: QueueData = {
   currentToken: 14,
   nextTokens: [
-    { number: 15, patient: { name: "Sarah Johnson" }, isEmergency: false },
-    { number: 16, patient: { name: "Michael Brown" }, isEmergency: false },
-    { number: 17, patient: { name: "Emily Davis" }, isEmergency: true },
-    { number: 18, patient: { name: "David Wilson" }, isEmergency: false },
+    { id: 15, number: 15, patient: { id: 2, name: "Sarah Johnson" }, isEmergency: false, status: 'waiting' },
+    { id: 16, number: 16, patient: { id: 3, name: "Michael Brown" }, isEmergency: false, status: 'waiting' },
+    { id: 17, number: 17, patient: { id: 4, name: "Emily Davis" }, isEmergency: true, status: 'waiting' },
+    { id: 18, number: 18, patient: { id: 5, name: "David Wilson" }, isEmergency: false, status: 'waiting' },
   ],
   lastCalled: [
-    { number: 13, patient: { name: "Jennifer Taylor" }, isEmergency: false },
-    { number: 12, patient: { name: "Robert Anderson" }, isEmergency: false },
+    { id: 13, number: 13, patient: { id: 6, name: "Jennifer Taylor" }, isEmergency: false, status: 'completed' },
+    { id: 12, number: 12, patient: { id: 7, name: "Robert Anderson" }, isEmergency: false, status: 'completed' },
   ]
 }
 
@@ -36,7 +46,6 @@ export default function QueueDisplayPage() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [blink, setBlink] = useState(false)
 
-  // Blink effect for emergency tokens
   useEffect(() => {
     const interval = setInterval(() => {
       setBlink(prev => !prev)
@@ -44,7 +53,6 @@ export default function QueueDisplayPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Update time every minute
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
@@ -52,7 +60,6 @@ export default function QueueDisplayPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // Sync with queue management page using localStorage
   useEffect(() => {
     const updateFromStorage = () => {
       const storedQueue = localStorage.getItem('queueData')
@@ -60,38 +67,35 @@ export default function QueueDisplayPage() {
         try {
           const parsedData = JSON.parse(storedQueue)
           
-          // Transform the management data to display format
-          const currentTokenObj = parsedData.tokens.find((t: any) => t.status === 'current')
-          const waitingTokens = parsedData.tokens.filter((t: any) => t.status === 'waiting')
-          const completedTokens = parsedData.completedTokens.slice(0, 2) // Show last 2 completed
+          const currentTokenObj = parsedData.tokens.find((t: Token) => t.status === 'current')
+          const waitingTokens = parsedData.tokens.filter((t: Token) => t.status === 'waiting')
+          const completedTokens = parsedData.completedTokens?.slice(0, 2) || []
           
           setQueueData({
-            currentToken: currentTokenObj?.number || 0,
-            nextTokens: waitingTokens.map((t: any) => ({
+            currentToken: currentTokenObj?.number || null,
+            nextTokens: waitingTokens.map((t: Token) => ({
+              id: t.id,
               number: t.number,
               patient: t.patient,
-              isEmergency: t.isEmergency
+              isEmergency: t.isEmergency,
+              status: t.status
             })),
-            lastCalled: completedTokens.map((t: any) => ({
+            lastCalled: completedTokens.map((t: Token) => ({
+              id: t.id,
               number: t.number,
               patient: t.patient,
-              isEmergency: t.isEmergency
+              isEmergency: t.isEmergency,
+              status: t.status
             }))
           })
         } catch (error) {
           console.error("Error parsing queue data:", error)
-          setQueueData(initialDisplayData)
         }
       }
     }
 
-    // Initial load
     updateFromStorage()
-
-    // Listen for changes
     window.addEventListener('storage', updateFromStorage)
-
-    // Polling fallback every 2 seconds
     const pollInterval = setInterval(updateFromStorage, 2000)
 
     return () => {
@@ -100,7 +104,6 @@ export default function QueueDisplayPage() {
     }
   }, [])
 
-  // Sort tokens: emergencies first, then regular tokens
   const sortedTokens = [...queueData.nextTokens].sort((a, b) => {
     if (a.isEmergency && !b.isEmergency) return -1
     if (!a.isEmergency && b.isEmergency) return 1
@@ -126,7 +129,7 @@ export default function QueueDisplayPage() {
             <h2 className="text-2xl font-bold mb-4">Now Serving</h2>
             <Card className="bg-green-900 border-green-700">
               <CardContent className="p-8 flex flex-col items-center justify-center">
-                <div className="text-8xl font-bold mb-4">#{queueData.currentToken}</div>
+                <div className="text-8xl font-bold mb-4">#{queueData.currentToken || '--'}</div>
                 <div className="text-2xl">
                   {queueData.nextTokens.find(t => t.number === queueData.currentToken)?.patient.name || 
                    sortedTokens[0]?.patient.name || 
@@ -138,7 +141,7 @@ export default function QueueDisplayPage() {
             <h2 className="text-2xl font-bold mt-8 mb-4">Last Called</h2>
             <div className="space-y-4">
               {queueData.lastCalled.map((token) => (
-                <Card key={token.number} className="bg-gray-800 border-gray-700">
+                <Card key={token.id} className="bg-gray-800 border-gray-700">
                   <CardContent className="p-4 flex justify-between items-center">
                     <div className="text-xl font-bold">#{token.number}</div>
                     <div>{token.patient.name}</div>
@@ -156,7 +159,7 @@ export default function QueueDisplayPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {sortedTokens.map((token) => (
                 <Card
-                  key={token.number}
+                  key={token.id}
                   className={
                     token.isEmergency 
                       ? blink 

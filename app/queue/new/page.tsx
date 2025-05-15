@@ -89,6 +89,9 @@ export default function NewTokenPage() {
       // Save to localStorage
       localStorage.setItem('queueData', JSON.stringify(updatedQueueData))
 
+      // Trigger storage event to update other tabs
+      window.dispatchEvent(new Event('storage'))
+
       toast({
         title: "Token generated successfully",
         description: `Token #${newTokenNumber} has been assigned to ${selectedPatient?.name}.`,
