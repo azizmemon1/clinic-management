@@ -31,7 +31,7 @@ interface Token {
 }
 
 interface QueueData {
-  currentToken: number
+  currentToken: number | null
   tokens: Token[]
   onHoldTokens: Token[]
   completedTokens: Token[]
@@ -71,7 +71,17 @@ export default function QueuePage() {
   useEffect(() => {
     const storedData = localStorage.getItem('queueData')
     if (storedData) {
-      setQueueData(JSON.parse(storedData))
+      try {
+        const parsedData = JSON.parse(storedData)
+        setQueueData({
+          currentToken: parsedData.currentToken || null,
+          tokens: parsedData.tokens || [],
+          onHoldTokens: parsedData.onHoldTokens || [],
+          completedTokens: parsedData.completedTokens || []
+        })
+      } catch (error) {
+        console.error("Error parsing queue data:", error)
+      }
     }
   }, [])
 
@@ -114,7 +124,7 @@ export default function QueuePage() {
       
       return {
         ...prev,
-        currentToken: nextPatient?.number || prev.currentToken,
+        currentToken: nextPatient?.number || null,
         tokens: [
           ...prev.tokens.filter(t => t.id !== current?.id && t.id !== nextPatient?.id),
           ...(nextPatient ? [{ ...nextPatient, status: "current" as const }] : [])
@@ -233,7 +243,7 @@ export default function QueuePage() {
             <CardContent className="space-y-4">
               <div className="text-center p-6 bg-muted rounded-lg">
                 <div className="text-sm font-medium text-muted-foreground">Now Serving</div>
-                <div className="text-5xl font-bold my-2">#{queueData.currentToken}</div>
+                <div className="text-5xl font-bold my-2">#{queueData.currentToken || '--'}</div>
                 <div className="text-sm font-medium">
                   {queueData.tokens.find(t => t.status === "current")?.patient.name || "None"}
                 </div>
@@ -303,9 +313,14 @@ export default function QueuePage() {
                               {token.status === "current" ? (
                                 <Button size="sm" onClick={callNextPatient}>Complete</Button>
                               ) : (
-                                <Button size="sm" variant="outline" onClick={() => moveToNextPosition(token.id)}>
-                                  Move Next
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => moveToNextPosition(token.id)}>
+                                    Move Next
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => putOnHold(token.id)}>
+                                    Hold
+                                  </Button>
+                                </div>
                               )}
                             </TableCell>
                           </TableRow>
