@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,14 +26,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-// Mock patient data
-const patient = {
-  id: 1,
-  name: "John Smith",
-  phone: "555-123-4567",
-  dob: "1985-06-15",
-  age: 38,
-};
+// Mock patients list for dropdown
+const patients = [
+  { id: 1, name: "John Smith", age: 38 },
+  { id: 2, name: "Jane Doe", age: 45 },
+  { id: 3, name: "Bob Johnson", age: 29 },
+];
 
 // Mock medicines list
 const medicines = [
@@ -50,19 +48,25 @@ const medicines = [
 ];
 
 interface FormDataState {
+  patientId: number | null;
   reason: string;
   notes: string;
-  selectedMedicines: number[]; // Specify that this is an array of numbers
+  selectedMedicines: number[];
   paymentStatus: string;
-  amount: string; // Consider if amount should be number type
+  amount: string;
 }
 
 
 export default function NewCasePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const patientIdFromQuery = searchParams.get('patientId');
 
+
+  const [selectedPatient, setSelectedPatient] = useState<typeof patients[0] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormDataState>({
+    patientId: null,
     reason: "",
     notes: "",
     selectedMedicines: [],
@@ -70,7 +74,19 @@ export default function NewCasePage() {
     amount: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (patientIdFromQuery) {
+      // In a real app, you would fetch patient details from API
+      const patient = patients.find(p => p.id === Number(patientIdFromQuery));
+      if (patient) {
+        setSelectedPatient(patient);
+        setFormData(prev => ({ ...prev, patientId: patient.id }));
+      }
+    }
+  }, [patientIdFromQuery]);
+
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -99,8 +115,23 @@ export default function NewCasePage() {
     });
   };
 
-  const handleSubmit = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePatientSelect = (patientId: string) => {
+    const patient = patients.find(p => p.id === Number(patientId));
+    setSelectedPatient(patient || null);
+    setFormData(prev => ({ ...prev, patientId: Number(patientId) }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!formData.patientId) {
+      toast({
+        title: "Error",
+        description: "Please select a patient.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (!formData.reason) {
       toast({
@@ -128,10 +159,10 @@ export default function NewCasePage() {
 
       toast({
         title: "Case added successfully",
-        description: `New case has been added for ${patient.name}.`,
+        description: `New case has been added for ${selectedPatient?.name}.`,
       });
 
-      router.push(`/patients/${patientId}`);
+      router.push(`/patients/${selectedPatient?.id}`); // TODO: Redirect to the patient's page add logic for patient id
     } catch (error) {
       toast({
         title: "Error adding case",
@@ -144,7 +175,7 @@ export default function NewCasePage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6">
       <div className="flex items-center mb-6">
         <Button
           variant="ghost"
@@ -160,25 +191,50 @@ export default function NewCasePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add New Case for {patient.name}</CardTitle>
+          <CardTitle>Add New Case</CardTitle>
           <CardDescription>
             Record details of the current consultation
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Patient Name
-                </p>
-                <p className="font-medium">{patient.name}</p>
+          {!patientIdFromQuery && (
+              <div className="space-y-2">
+                <Label htmlFor="patientSelect">Select Patient</Label>
+                <Select
+                  name="patientSelect"
+                  value={formData.patientId?.toString()}
+                  onValueChange={handlePatientSelect}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a patient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {patients.map((patient) => (
+                      <SelectItem key={patient.id} value={patient.id.toString()}>
+                        {patient.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Age</p>
-                <p>{patient.age} years</p>
+            )}
+
+            {selectedPatient && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Patient Name
+                  </p>
+                  <p className="font-medium">{selectedPatient.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Age</p>
+                  <p>{selectedPatient.age} years</p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="reason">Reason for Visit</Label>

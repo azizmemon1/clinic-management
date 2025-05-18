@@ -18,62 +18,28 @@ const family = {
     id: 1,
     name: "Smith Family",
     members: [
-        {
-            id: 1,
-            name: "John Smith",
-            cases: [
-                { id: 101, date: "2023-04-15", reason: "Fever and cough", amount: 75, status: "Paid" },
-                { id: 102, date: "2023-06-22", reason: "Annual checkup", amount: 120, status: "Paid" },
-                { id: 103, date: "2023-07-10", reason: "Back pain", amount: 90, status: "Paid" },
-                { id: 104, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 105, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 106, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 107, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 108, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 109, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 110, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 111, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 112, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" },
-                { id: 113, date: "2023-09-05", reason: "Allergy check", amount: 65, status: "Paid" }
-            ]
-        },
-        {
-            id: 2,
-            name: "Mary Smith",
-            cases: [
-                { id: 201, date: "2023-09-10", reason: "Stomach pain", amount: 95, status: "Partial" },
-                { id: 202, date: "2023-11-15", reason: "Pregnancy checkup", amount: 150, status: "Paid" }
-            ]
-        },
-        {
-            id: 3,
-            name: "James Smith",
-            cases: [
-                { id: 301, date: "2024-01-05", reason: "Headache and dizziness", amount: 60, status: "Unpaid" },
-                { id: 302, date: "2024-02-12", reason: "Sports physical", amount: 85, status: "Paid" }
-            ]
-        }
+        { id: 1, name: "John Smith" },
+        { id: 2, name: "Mary Smith" },
+        { id: 3, name: "James Smith" },
+        // ... more members as needed
+    ],
+    cases: [
+        { id: 101, date: "2023-04-15", reason: "Fever and cough", amount: 75, status: "Paid", patientName: "John Smith" },
+        { id: 102, date: "2023-06-22", reason: "Annual checkup", amount: 120, status: "Paid", patientName: "John Smith" },
+        // ... more cases as needed
     ]
 }
-
-interface PageProps {
-    params: {
-        id: string; // <-- Make sure 'id' matches your dynamic route segment, e.g., /your-route/[id]/page.tsx
-    };
-    // searchParams?: { [key: string]: string | string[] | undefined }; // Optional
-}
-
 
 export default function FamilyDetailPage() {
     const params = useParams()
     const familyId = params?.id as string
     const [currentPage, setCurrentPage] = useState(1)
-    const [currentMembersPage, setCurrentMembersPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [currentCasesPage, setCurrentCasesPage] = useState(1)
     const [membersPerPage, setMembersPerPage] = useState(10)
+    const [casesPerPage, setCasesPerPage] = useState(10)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [open, setOpen] = useState(false)
-    const router = useRouter();
+    const router = useRouter()
 
     const getPaymentStatusColor = (status: string) => {
         switch (status) {
@@ -83,7 +49,6 @@ export default function FamilyDetailPage() {
             default: return "bg-gray-100 text-gray-800"
         }
     }
-
     const handleDeleteFamily = async (familyId: number) => {
         setIsSubmitting(true)
 
@@ -108,42 +73,26 @@ export default function FamilyDetailPage() {
         }
     }
 
-
-    // Combine and sort all cases
-    const allCases = family.members.flatMap(member =>
-        member.cases.map(caseItem => ({
-            ...caseItem,
-            patientName: member.name
-        }))
-    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-
-    // Pagination logic for medical history
-    const totalPages = Math.ceil(allCases.length / itemsPerPage)
-    const paginatedCases = allCases.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-    )
-
-    // Pagination logic for family members
+    // Pagination for members
     const totalMembersPages = Math.ceil(family.members.length / membersPerPage)
     const paginatedMembers = family.members.slice(
-        (currentMembersPage - 1) * membersPerPage,
-        currentMembersPage * membersPerPage
+        (currentPage - 1) * membersPerPage,
+        currentPage * membersPerPage
     )
 
-    // Format numbers with commas
-    const formatNumber = (num: number) => {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-    }
+    // Pagination for cases
+    const totalCasesPages = Math.ceil(family.cases.length / casesPerPage)
+    const paginatedCases = family.cases.slice(
+        (currentCasesPage - 1) * casesPerPage,
+        currentCasesPage * casesPerPage
+    )
 
     return (
         <div className="p-6 space-y-6">
             <div className="flex items-center mb-6">
-                <Button variant="ghost" size="sm" asChild className="mr-4">
-                    <Link href="/families">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Families
-                    </Link>
+                <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back
                 </Button>
             </div>
 
@@ -202,7 +151,8 @@ export default function FamilyDetailPage() {
                                                 variant="destructive"
                                                 onClick={() => handleDeleteFamily(family.id)}
                                                 disabled={isSubmitting}
-                                            >                             {isSubmitting ? "Deleting..." : "Delete Family"}
+                                            >
+                                                {isSubmitting ? "Deleting..." : "Delete Family"}
                                             </Button>
                                         </div>
                                     </DialogContent>
@@ -213,18 +163,88 @@ export default function FamilyDetailPage() {
                 </Card>
 
                 <Card className="lg:col-span-2">
-                    <Tabs defaultValue="history">
+                    <Tabs defaultValue="members">
                         <CardHeader>
                             <div className="flex items-center justify-between">
-                                <CardTitle>Family History</CardTitle>
+                                <CardTitle>Family Details</CardTitle>
                                 <TabsList>
-                                    <TabsTrigger value="history">Medical History</TabsTrigger>
                                     <TabsTrigger value="members">Family Members</TabsTrigger>
+                                    <TabsTrigger value="history">Medical History</TabsTrigger>
                                 </TabsList>
                             </div>
-                            <CardDescription>View family member's medical history and information</CardDescription>
+                            <CardDescription>View family members and their medical history</CardDescription>
                         </CardHeader>
                         <CardContent>
+                            <TabsContent value="members" className="space-y-4">
+                                <div className="rounded-md border">
+                                    <div className="relative h-[500px] overflow-y-auto">
+                                        <Table>
+                                            <TableHeader className="sticky top-0 bg-background">
+                                                <TableRow>
+                                                    <TableHead>Name</TableHead>
+                                                    <TableHead>Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {paginatedMembers.map((member) => (
+                                                    <TableRow key={member.id} className="hover:bg-accent cursor-pointer">
+                                                        <TableCell className="font-medium">{member.name}</TableCell>
+                                                        <TableCell>
+                                                            <Button variant="outline" size="sm" asChild>
+                                                                <Link href={`/patients/${member.id}`}>View</Link>
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+
+                                {/* Members Pagination */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <p className="text-sm text-muted-foreground">Rows per page</p>
+                                        <Select
+                                            value={`${membersPerPage}`}
+                                            onValueChange={(value) => {
+                                                setMembersPerPage(Number(value))
+                                                setCurrentPage(1)
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 w-[70px]">
+                                                <SelectValue placeholder={membersPerPage} />
+                                            </SelectTrigger>
+                                            <SelectContent side="top">
+                                                {[5, 10, 25, 50].map((pageSize) => (
+                                                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                                                        {pageSize}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={currentPage === 1}
+                                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={currentPage === totalMembersPages}
+                                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalMembersPages))}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
                             <TabsContent value="history" className="space-y-4">
                                 <div className="rounded-md border">
                                     <div className="relative h-[500px] overflow-y-auto">
@@ -260,119 +280,43 @@ export default function FamilyDetailPage() {
                                     </div>
                                 </div>
 
-                                {/* Pagination */}
+                                {/* Cases Pagination */}
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-2">
                                         <p className="text-sm text-muted-foreground">Rows per page</p>
                                         <Select
-                                            value={`${itemsPerPage}`}
+                                            value={`${casesPerPage}`}
                                             onValueChange={(value) => {
-                                                setItemsPerPage(Number(value))
-                                                setCurrentPage(1)
+                                                setCasesPerPage(Number(value))
+                                                setCurrentCasesPage(1)
                                             }}
                                         >
                                             <SelectTrigger className="h-8 w-[70px]">
-                                                <SelectValue placeholder={itemsPerPage} />
+                                                <SelectValue placeholder={casesPerPage} />
                                             </SelectTrigger>
                                             <SelectContent side="top">
-                                                {[5, 10, 25, 50, 100].map((pageSize) => (
+                                                {[5, 10, 25, 50].map((pageSize) => (
                                                     <SelectItem key={pageSize} value={`${pageSize}`}>
                                                         {pageSize}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <div className="text-sm text-muted-foreground">
-                                            {`${(currentPage - 1) * itemsPerPage + 1}-${Math.min(currentPage * itemsPerPage, allCases.length)} of ${formatNumber(allCases.length)}`}
-                                        </div>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            disabled={currentPage === 1}
-                                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                            disabled={currentCasesPage === 1}
+                                            onClick={() => setCurrentCasesPage(prev => Math.max(prev - 1, 1))}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            disabled={currentPage === totalPages}
-                                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </TabsContent>
-
-                            <TabsContent value="members" className="space-y-4">
-                                <div className="rounded-md border">
-                                    <div className="relative h-[500px] overflow-y-auto">
-                                        <Table>
-                                            <TableHeader className="sticky top-0 bg-background">
-                                                <TableRow>
-                                                    <TableHead>Name</TableHead>
-                                                    <TableHead>Actions</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {paginatedMembers.map((member) => (
-                                                    <TableRow key={member.id} className="hover:bg-accent cursor-pointer">
-                                                        <TableCell className="font-medium">{member.name}</TableCell>
-                                                        <TableCell>
-                                                            <Button variant="outline" size="sm" asChild>
-                                                                <Link href={`/patients/${member.id}`}>View</Link>
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-                                </div>
-
-                                {/* Pagination for members */}
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-2">
-                                        <p className="text-sm text-muted-foreground">Rows per page</p>
-                                        <Select
-                                            value={`${membersPerPage}`}
-                                            onValueChange={(value) => {
-                                                setMembersPerPage(Number(value))
-                                                setCurrentMembersPage(1)
-                                            }}
-                                        >
-                                            <SelectTrigger className="h-8 w-[70px]">
-                                                <SelectValue placeholder={membersPerPage} />
-                                            </SelectTrigger>
-                                            <SelectContent side="top">
-                                                {[5, 10, 25, 50, 100].map((pageSize) => (
-                                                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                                                        {pageSize}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <div className="text-sm text-muted-foreground">
-                                            {`${(currentMembersPage - 1) * membersPerPage + 1}-${Math.min(currentMembersPage * membersPerPage, family.members.length)} of ${formatNumber(family.members.length)}`}
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={currentMembersPage === 1}
-                                            onClick={() => setCurrentMembersPage(prev => Math.max(prev - 1, 1))}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={currentMembersPage === totalMembersPages}
-                                            onClick={() => setCurrentMembersPage(prev => Math.min(prev + 1, totalMembersPages))}
+                                            disabled={currentCasesPage === totalCasesPages}
+                                            onClick={() => setCurrentCasesPage(prev => Math.min(prev + 1, totalCasesPages))}
                                         >
                                             <ChevronRight className="h-4 w-4" />
                                         </Button>

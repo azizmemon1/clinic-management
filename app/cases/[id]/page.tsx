@@ -11,6 +11,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 
 // Type
 interface Case {
@@ -55,36 +56,128 @@ const fetchCases = async (): Promise<Case[]> => {
       amount: 350,
     },
   ];
-};
+}
 
 const fetchCaseById = async (id: number): Promise<Case | null> => {
   const all = await fetchCases();
   return all.find((item) => item.id === id) || null;
 };
 
+
+const Detail = ({
+  label,
+  value,
+  badge,
+}: {
+  label: string;
+  value: string;
+  badge?: "default" | "destructive" | "outline" | "secondary";
+}) => {
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      {badge ? (
+        <Badge variant={badge}>{value}</Badge>
+      ) : (
+        <p className="font-medium">{value}</p>
+      )}
+    </div>
+  );
+}
+
+const getPaymentVariant = (
+  status: "Paid" | "Pending" | "Partial"
+): | "destructive" | "outline" | "default" => {
+  switch (status) {
+    case "Paid":
+      return "default";
+    case "Partial":
+      return "outline";
+    case "Pending":
+      return "destructive";
+  }
+}
+
 export default function CaseDetailsPage() {
   const { id: caseIdParam } = useParams();
   const caseId = Number(caseIdParam);
   const router = useRouter();
   const [caseData, setCaseData] = useState<Case | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const data = await fetchCaseById(caseId);
-      if (!data) {
-        toast({ title: "Case not found", variant: "destructive" });
-        router.push("/cases");
-      } else {
+    let isMounted = true;  // Flag to track if component is mounted
+
+    const loadCase = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchCaseById(caseId);
+
+        if (!isMounted) return;
+
+        if (!data) {
+          toast({ 
+            title: "Case not found",
+            description: `Case with ID ${caseId} could not be found. Redirecting to cases list.`,
+            variant: "destructive" 
+          });
+          router.push("/cases");
+          return;
+        }
+
         setCaseData(data);
+      } catch (error) {
+        toast({ 
+          title: "Error loading case",
+          description: "Please try again later",
+          variant: "destructive"
+        });
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);  // Set loading to false whether successful or not
+        }
       }
-    })();
-  }, [caseId]);
+    };
+
+    loadCase();
+
+    return () => {
+      isMounted = false;  // Set flag to false when unmounting
+    };
+  }, [caseId, router]);
 
   const handleEdit = () => router.push(`/cases/${caseId}/edit`);
-  const handleDelete = () => {
-    toast({ title: "Case deleted" });
-    router.push("/cases");
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      toast({ 
+        title: "Case deleted successfully",
+        description: `Patient case #${caseId} has been deleted`
+      });
+      router.push("/cases");
+    } catch (err) {
+      toast({ 
+        title: "Error deleting case",
+        description: "Please try again later",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <p className="text-muted-foreground">Loading case details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!caseData) return null;
 
@@ -100,9 +193,20 @@ export default function CaseDetailsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleEdit}>Edit</Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            Delete
+          <Button onClick={handleEdit} disabled={isDeleting}>Edit</Button>
+          <Button 
+            variant="destructive" 
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
           </Button>
         </div>
       </CardHeader>
@@ -119,38 +223,4 @@ export default function CaseDetailsPage() {
       </CardContent>
     </Card>
   );
-}
-
-function Detail({
-  label,
-  value,
-  badge,
-}: {
-  label: string;
-  value: string;
-  badge?: "default" | "destructive" | "outline" | "secondary";
-}) {
-  return (
-    <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      {badge ? (
-        <Badge variant={badge}>{value}</Badge>
-      ) : (
-        <p className="font-medium">{value}</p>
-      )}
-    </div>
-  );
-}
-
-function getPaymentVariant(
-  status: "Paid" | "Pending" | "Partial"
-): | "destructive" | "outline" | "default" {
-  switch (status) {
-    case "Paid":
-      return "default";
-    case "Partial":
-      return "outline";
-    case "Pending":
-      return "destructive";
-  }
 }

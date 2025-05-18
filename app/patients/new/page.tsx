@@ -7,16 +7,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "@/components/ui/use-toast"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/hooks/use-toast"
 import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
 
 // Mock family groups
 const familyGroups = [
-  { id: 1, name: "Smith Family" },
-  { id: 2, name: "Brown Family" },
-  { id: 3, name: "Wilson Family" },
-  { id: 4, name: "Thomas Family" },
+  { id: "1", name: "Smith Family" },
+  { id: "2", name: "Brown Family" },
+  { id: "3", name: "Wilson Family" },
+  { id: "4", name: "Thomas Family" },
 ]
 
 export default function NewPatientPage() {
@@ -27,16 +28,17 @@ export default function NewPatientPage() {
     name: "",
     phone: "",
     dob: "",
-    familyGroupId: "",
+    familyGroupId: undefined as string | undefined,
+    notes: ""
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
   
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleSelectChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, familyGroupId: value }));
   };
   
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -52,15 +54,8 @@ export default function NewPatientPage() {
         description: `${formData.name} has been added to the system.`,
       })
 
-      // If we have a family group ID in the URL, redirect back to that patient's page
-      const familyGroupParam = searchParams.get("familyGroup")
       const referrerPatientId = searchParams.get("referrerPatientId")
-
-      if (referrerPatientId) {
-        router.push(`/patients/${referrerPatientId}`)
-      } else {
-        router.push("/patients")
-      }
+      router.push(referrerPatientId ? `/patients/${referrerPatientId}` : "/patients")
     } catch (error) {
       toast({
         title: "Error registering patient",
@@ -75,10 +70,10 @@ export default function NewPatientPage() {
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="flex items-center mb-6">
-      <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
-      <ArrowLeft className="mr-2 h-4 w-4" />
-      Back
-    </Button>
+        <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back
+        </Button>
         <h1 className="text-3xl font-bold">New Patient</h1>
       </div>
 
@@ -121,22 +116,32 @@ export default function NewPatientPage() {
             <div className="space-y-2">
               <Label htmlFor="familyGroupId">Family Group (Optional)</Label>
               <Select
-                name="familyGroupId"
                 value={formData.familyGroupId}
-                onValueChange={(value) => handleSelectChange("familyGroupId", value)}
+                onValueChange={handleSelectChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a family group (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
                   {familyGroups.map((group) => (
-                    <SelectItem key={group.id} value={group.id.toString()}>
+                    <SelectItem key={group.id} value={group.id}>
                       {group.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes (Optional)</Label>
+              <Textarea
+                id="notes"
+                name="notes"
+                placeholder="Enter any additional notes about the patient"
+                value={formData.notes}
+                onChange={handleChange}
+                rows={3}
+              />
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">
