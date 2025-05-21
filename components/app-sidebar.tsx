@@ -15,10 +15,13 @@ import {
   SidebarTrigger,
   useSidebar
 } from "@/components/ui/sidebar"
-
+import { useAuth } from "@/contexts/auth-context"
+import { Button } from "./ui/button"
 export function AppSidebar() {
   const pathname = usePathname()
   const { expanded, setExpanded } = useSidebar()
+  const { user, logout } = useAuth();
+  const userRole = user?.role || "staff";
 
   const menuItems = [
     {
@@ -73,7 +76,7 @@ export function AppSidebar() {
 
   // For demo purposes, we'll use a hardcoded role
   // In a real app, this would come from authentication
-  const userRole = "doctor" // Change to "staff" or "doctor" to test different roles
+  // const userRole = "doctor" // Change to "staff" or "doctor" to test different roles
 
   // Filter menu items based on user role
   const filteredMenuItems = menuItems.filter((item) => item.role.includes(userRole));
@@ -111,10 +114,10 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Logout">
-              <Link href="/logout">
-                <LogOut className="h-5 w-5" />
-                {expanded && <span>Logout</span>}
-              </Link>
+            <Button variant="ghost" className="w-full justify-start" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Logout</span>
+            </Button>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
