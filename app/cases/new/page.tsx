@@ -22,9 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft } from "lucide-react";
+import { Check, ChevronsUpDown, Save } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 // Mock patients list for dropdown
 const patients = [
@@ -88,37 +98,20 @@ export default function NewCasePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleMedicineToggle = (medicineId: number) => {
-    setFormData((prev) => {
-      const selectedMedicines: number[] = [...prev.selectedMedicines];
-
-      if (selectedMedicines.includes(medicineId)) {
-        return {
-          ...prev,
-          selectedMedicines: selectedMedicines.filter(
-            (id) => id !== medicineId
-          ),
-        };
-      } else {
-        return {
-          ...prev,
-          selectedMedicines: [...selectedMedicines, medicineId],
-        };
-      }
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handlePatientSelect = (patientId: string) => {
     const patient = patients.find(p => p.id === Number(patientId));
     setSelectedPatient(patient || null);
-    setFormData(prev => ({ ...prev, patientId: Number(patientId) }));
+    setFormData(prev => ({
+      ...prev,
+      patientId: Number(patientId)
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -249,27 +242,80 @@ export default function NewCasePage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-4">
               <Label>Prescription</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-4 border rounded-md">
-                {medicines.map((medicine) => (
-                  <div
-                    key={medicine.id}
-                    className="flex items-center space-x-2"
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between"
                   >
-                    <Checkbox
-                      id={`medicine-${medicine.id}`}
-                      checked={formData.selectedMedicines.includes(medicine.id)}
-                      onCheckedChange={() => handleMedicineToggle(medicine.id)}
-                    />
-                    <Label
-                      htmlFor={`medicine-${medicine.id}`}
-                      className="cursor-pointer"
+                    {formData.selectedMedicines.length > 0
+                      ? `${formData.selectedMedicines.length} medicines selected`
+                      : "Select medicines..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search medicines..." />
+                    <CommandEmpty>No medicines found.</CommandEmpty>
+                    <CommandGroup className="max-h-[300px] overflow-y-auto">
+                      {medicines.map((medicine) => (
+                        <CommandItem
+                          key={medicine.id}
+                          value={medicine.id.toString()}
+                          onSelect={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              selectedMedicines: prev.selectedMedicines.includes(medicine.id)
+                                ? prev.selectedMedicines.filter(id => id !== medicine.id)
+                                : [...prev.selectedMedicines, medicine.id]
+                            }));
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.selectedMedicines.includes(medicine.id) 
+                                ? "opacity-100" 
+                                : "opacity-0"
+                            )}
+                          />
+                          {medicine.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+
+              <div className="flex flex-wrap gap-2">
+                {formData.selectedMedicines.map((id) => {
+                  const medicine = medicines.find(m => m.id === id);
+                  if (!medicine) return null;
+                  return (
+                    <Badge 
+                      key={id}
+                      variant="secondary"
+                      className="flex items-center gap-1"
                     >
                       {medicine.name}
-                    </Label>
-                  </div>
-                ))}
+                      <button
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            selectedMedicines: prev.selectedMedicines.filter(m => m !== id)
+                          }));
+                        }}
+                        className="ml-1 hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  );
+                })}
               </div>
             </div>
 

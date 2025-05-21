@@ -230,11 +230,11 @@ const resetFilters = () => {
 };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Patient Cases</CardTitle>
+            <CardTitle className="text-3xl font-bold">Patient Cases</CardTitle>
             <CardDescription>Recent medical cases and payments</CardDescription>
           </div>
           <div className="flex gap-2">

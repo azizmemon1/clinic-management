@@ -106,7 +106,7 @@ export default function NewPatientFamilyPage() {
   )
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-6 mx-auto">
       <div className="flex items-center mb-6">
         <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
