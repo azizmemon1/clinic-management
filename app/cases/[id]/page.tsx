@@ -11,7 +11,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 // Type
 interface Case {
@@ -182,15 +182,27 @@ export default function CaseDetailsPage() {
   if (!caseData) return null;
 
   return (
+    <div className="p-6">
     <Card className="flex flex-col">
       <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <CardTitle className="text-xl font-semibold">
-            Case #{caseData.id}
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {caseData.patientName} • {new Date(caseData.date).toDateString()}
-          </p>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.back()}
+            className="mr-4"
+          >
+            <ArrowLeft className="mr-2h-4 w-4" />
+            Back
+          </Button>
+          <div>
+            <CardTitle className="text-3xl font-bold">
+              Case #{caseData.id}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {caseData.patientName} • {new Date(caseData.date).toDateString()}
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={handleEdit} disabled={isDeleting}>Edit</Button>
@@ -222,5 +234,6 @@ export default function CaseDetailsPage() {
         <Detail label="Payment Status" badge={getPaymentVariant(caseData.paymentStatus)} value={caseData.paymentStatus} />
       </CardContent>
     </Card>
+    </div>
   );
 }

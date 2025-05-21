@@ -154,25 +154,6 @@ export default function EditCasePage() {
     setFormData((prev) => prev ? ({ ...prev, [name]: value }) : null);
   };
 
-  const handleMedicineToggle = (medicineId: number) => {
-    setFormData((prev) => {
-      if (!prev) return null;
-      const selectedMedicines = [...prev.selectedMedicines];
-
-      if (selectedMedicines.includes(medicineId)) {
-        return {
-          ...prev,
-          selectedMedicines: selectedMedicines.filter((id) => id !== medicineId),
-        };
-      } else {
-        return {
-          ...prev,
-          selectedMedicines: [...selectedMedicines, medicineId],
-        };
-      }
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!formData) return;
