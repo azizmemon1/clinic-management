@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/popover"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { RouteGuard } from "@/components/route-guard"
 
 // Mock data for patients
 const mockPatients = [
@@ -93,7 +94,7 @@ export default function NewPatientFamilyPage() {
   }
 
   // Filter patients who don't belong to any family group
-  const availablePatients = mockPatients.filter(patient => 
+  const availablePatients = mockPatients.filter(patient =>
     patient.familyGroup === null
   )
 
@@ -106,124 +107,126 @@ export default function NewPatientFamilyPage() {
   )
 
   return (
-    <div className="p-6 mx-auto">
-      <div className="flex items-center mb-6">
-        <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <h1 className="text-3xl font-bold">New Family Group</h1>
-      </div>
+    <RouteGuard allowedRoles={["doctor", "staff"]}>
+      <div className="p-6 mx-auto">
+        <div className="flex items-center mb-6">
+          <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <h1 className="text-3xl font-bold">New Family Group</h1>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Family Group</CardTitle>
-          <CardDescription>Enter family name and select members</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="familyName">Family Name</Label>
-              <Input
-                id="familyName"
-                name="familyName"
-                placeholder="Enter family name"
-                value={formData.familyName}
-                onChange={handleChange}
-                required
-              />
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Create Family Group</CardTitle>
+            <CardDescription>Enter family name and select members</CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="familyName">Family Name</Label>
+                <Input
+                  id="familyName"
+                  name="familyName"
+                  placeholder="Enter family name"
+                  value={formData.familyName}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label>Select Family Members</Label>
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={open}
-                    className="w-full justify-between"
-                  >
-                    {formData.selectedPatients.length > 0
-                      ? `${formData.selectedPatients.length} selected`
-                      : "Select patients..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
-                  <Command>
-                    <CommandInput
-                      placeholder="Search patients..."
-                      value={searchTerm}
-                      onValueChange={setSearchTerm}
-                    />
-                    <CommandEmpty>No available patients found.</CommandEmpty>
-                    <CommandGroup className="max-h-[300px] overflow-y-auto">
-                      {filteredPatients.length === 0 ? (
-                        <div className="py-6 text-center text-sm text-muted-foreground">
-                          All patients already belong to families
-                        </div>
-                      ) : (
-                        filteredPatients.map((patient) => (
-                          <CommandItem
-                            key={patient.id}
-                            value={patient.id.toString()}
-                            onSelect={() => {
-                              handleSelectPatient(patient.id)
-                            }}
-                          >
-                            <Check
-                              className={`
+              <div className="space-y-2">
+                <Label>Select Family Members</Label>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={open}
+                      className="w-full justify-between"
+                    >
+                      {formData.selectedPatients.length > 0
+                        ? `${formData.selectedPatients.length} selected`
+                        : "Select patients..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0">
+                    <Command>
+                      <CommandInput
+                        placeholder="Search patients..."
+                        value={searchTerm}
+                        onValueChange={setSearchTerm}
+                      />
+                      <CommandEmpty>No available patients found.</CommandEmpty>
+                      <CommandGroup className="max-h-[300px] overflow-y-auto">
+                        {filteredPatients.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-muted-foreground">
+                            All patients already belong to families
+                          </div>
+                        ) : (
+                          filteredPatients.map((patient) => (
+                            <CommandItem
+                              key={patient.id}
+                              value={patient.id.toString()}
+                              onSelect={() => {
+                                handleSelectPatient(patient.id)
+                              }}
+                            >
+                              <Check
+                                className={`
                                 mr-2 h-4 w-4
                                 ${formData.selectedPatients.includes(patient.id) ? "opacity-100" : "opacity-0"}
                               `}
-                            />
-                            {patient.name} ({patient.dob})
-                          </CommandItem>
-                        ))
-                      )}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                              />
+                              {patient.name} ({patient.dob})
+                            </CommandItem>
+                          ))
+                        )}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
 
-              {selectedPatientsData.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {selectedPatientsData.map((patient) => (
-                    <Badge
-                      key={patient.id}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => handleSelectPatient(patient.id)}
-                    >
-                      {patient.name}
-                      <span className="ml-2">×</span>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" asChild>
-              <Link href="/patients">Cancel</Link>
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting || !formData.familyName || formData.selectedPatients.length === 0}
-            >
-              {isSubmitting ? (
-                "Creating..."
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Create Family
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
-    </div>
+                {selectedPatientsData.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedPatientsData.map((patient) => (
+                      <Badge
+                        key={patient.id}
+                        variant="secondary"
+                        className="cursor-pointer"
+                        onClick={() => handleSelectPatient(patient.id)}
+                      >
+                        {patient.name}
+                        <span className="ml-2">×</span>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" asChild>
+                <Link href="/patients">Cancel</Link>
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !formData.familyName || formData.selectedPatients.length === 0}
+              >
+                {isSubmitting ? (
+                  "Creating..."
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Create Family
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    </RouteGuard>
   )
 }

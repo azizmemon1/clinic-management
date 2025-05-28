@@ -316,7 +316,7 @@ export default function DoctorPage() {
   }
 
   return (
-    <RouteGuard allowedRoles={["doctor", "admin"]}>
+    <RouteGuard allowedRoles={["doctor"]}>
       <div className="p-6 space-y-6">
         {showEmergencyAlert && (
           <div className="bg-red-500 text-white p-4 rounded-md flex items-center animate-pulse">
@@ -504,7 +504,7 @@ export default function DoctorPage() {
                             </Link>
                           </Button>
                           <Button asChild>
-                            <Link href={`/doctor/new-case/${currentPatient.id}`}>Add New Case</Link>
+                            <Link href={`/cases/new?patientId=${currentPatient.id}`}>Add New Case</Link>
                           </Button>
                         </div>
                       </>

@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { RouteGuard } from "@/components/route-guard";
 
 // Mock patients list for dropdown
 const patients = [
@@ -168,226 +169,228 @@ export default function NewCasePage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.back()}
-          className="mr-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <h1 className="text-3xl font-bold">New Case</h1>
-      </div>
+    <RouteGuard allowedRoles={["doctor", "staff"]}>
+      <div className="p-6">
+        <div className="flex items-center mb-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.back()}
+            className="mr-4"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <h1 className="text-3xl font-bold">New Case</h1>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add New Case</CardTitle>
-          <CardDescription>
-            Record details of the current consultation
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-6">
-          {!patientIdFromQuery && (
-              <div className="space-y-2">
-                <Label htmlFor="patientSelect">Select Patient</Label>
-                <Select
-                  name="patientSelect"
-                  value={formData.patientId?.toString()}
-                  onValueChange={handlePatientSelect}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a patient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {patients.map((patient) => (
-                      <SelectItem key={patient.id} value={patient.id.toString()}>
-                        {patient.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {selectedPatient && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Patient Name
-                  </p>
-                  <p className="font-medium">{selectedPatient.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Age</p>
-                  <p>{selectedPatient.age} years</p>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="reason">Reason for Visit</Label>
-              <Textarea
-                id="reason"
-                name="reason"
-                placeholder="Enter the reason for the patient's visit"
-                value={formData.reason}
-                onChange={handleChange}
-                rows={3}
-                required
-              />
-            </div>
-
-            <div className="space-y-4">
-              <Label>Prescription</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between"
+        <Card>
+          <CardHeader>
+            <CardTitle>Add New Case</CardTitle>
+            <CardDescription>
+              Record details of the current consultation
+            </CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-6">
+              {!patientIdFromQuery && (
+                <div className="space-y-2">
+                  <Label htmlFor="patientSelect">Select Patient</Label>
+                  <Select
+                    name="patientSelect"
+                    value={formData.patientId?.toString()}
+                    onValueChange={handlePatientSelect}
+                    required
                   >
-                    {formData.selectedMedicines.length > 0
-                      ? `${formData.selectedMedicines.length} medicines selected`
-                      : "Select medicines..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search medicines..." />
-                    <CommandEmpty>No medicines found.</CommandEmpty>
-                    <CommandGroup className="max-h-[300px] overflow-y-auto">
-                      {medicines.map((medicine) => (
-                        <CommandItem
-                          key={medicine.id}
-                          value={medicine.id.toString()}
-                          onSelect={() => {
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a patient" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {patients.map((patient) => (
+                        <SelectItem key={patient.id} value={patient.id.toString()}>
+                          {patient.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedPatient && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Patient Name
+                    </p>
+                    <p className="font-medium">{selectedPatient.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Age</p>
+                    <p>{selectedPatient.age} years</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="reason">Reason for Visit</Label>
+                <Textarea
+                  id="reason"
+                  name="reason"
+                  placeholder="Enter the reason for the patient's visit"
+                  value={formData.reason}
+                  onChange={handleChange}
+                  rows={3}
+                  required
+                />
+              </div>
+
+              <div className="space-y-4">
+                <Label>Prescription</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between"
+                    >
+                      {formData.selectedMedicines.length > 0
+                        ? `${formData.selectedMedicines.length} medicines selected`
+                        : "Select medicines..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search medicines..." />
+                      <CommandEmpty>No medicines found.</CommandEmpty>
+                      <CommandGroup className="max-h-[300px] overflow-y-auto">
+                        {medicines.map((medicine) => (
+                          <CommandItem
+                            key={medicine.id}
+                            value={medicine.id.toString()}
+                            onSelect={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedMedicines: prev.selectedMedicines.includes(medicine.id)
+                                  ? prev.selectedMedicines.filter(id => id !== medicine.id)
+                                  : [...prev.selectedMedicines, medicine.id]
+                              }));
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.selectedMedicines.includes(medicine.id)
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {medicine.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                <div className="flex flex-wrap gap-2">
+                  {formData.selectedMedicines.map((id) => {
+                    const medicine = medicines.find(m => m.id === id);
+                    if (!medicine) return null;
+                    return (
+                      <Badge
+                        key={id}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
+                        {medicine.name}
+                        <button
+                          onClick={() => {
                             setFormData(prev => ({
                               ...prev,
-                              selectedMedicines: prev.selectedMedicines.includes(medicine.id)
-                                ? prev.selectedMedicines.filter(id => id !== medicine.id)
-                                : [...prev.selectedMedicines, medicine.id]
+                              selectedMedicines: prev.selectedMedicines.filter(m => m !== id)
                             }));
                           }}
+                          className="ml-1 hover:text-destructive"
                         >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              formData.selectedMedicines.includes(medicine.id) 
-                                ? "opacity-100" 
-                                : "opacity-0"
-                            )}
-                          />
-                          {medicine.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-
-              <div className="flex flex-wrap gap-2">
-                {formData.selectedMedicines.map((id) => {
-                  const medicine = medicines.find(m => m.id === id);
-                  if (!medicine) return null;
-                  return (
-                    <Badge 
-                      key={id}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {medicine.name}
-                      <button
-                        onClick={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            selectedMedicines: prev.selectedMedicines.filter(m => m !== id)
-                          }));
-                        }}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Additional Notes</Label>
-              <Textarea
-                id="notes"
-                name="notes"
-                placeholder="Enter any additional notes or instructions"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="paymentStatus">Payment Status</Label>
-                <Select
-                  name="paymentStatus"
-                  value={formData.paymentStatus}
-                  onValueChange={(value) =>
-                    handleSelectChange("paymentStatus", value)
-                  }
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Paid">Paid</SelectItem>
-                    <SelectItem value="Partial">Partial</SelectItem>
-                    <SelectItem value="Unpaid">Unpaid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount Charged</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5">$</span>
-                  <Input
-                    id="amount"
-                    name="amount"
-                    type="number"
-                    placeholder="0.00"
-                    className="pl-7"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    required
-                  />
+                          ×
+                        </button>
+                      </Badge>
+                    );
+                  })}
                 </div>
               </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => router.back()}>
-             Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                "Saving..."
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Case
-                </>
-              )}
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
-    </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Additional Notes</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  placeholder="Enter any additional notes or instructions"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="paymentStatus">Payment Status</Label>
+                  <Select
+                    name="paymentStatus"
+                    value={formData.paymentStatus}
+                    onValueChange={(value) =>
+                      handleSelectChange("paymentStatus", value)
+                    }
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Paid">Paid</SelectItem>
+                      <SelectItem value="Partial">Partial</SelectItem>
+                      <SelectItem value="Unpaid">Unpaid</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount Charged</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5">$</span>
+                    <Input
+                      id="amount"
+                      name="amount"
+                      type="number"
+                      placeholder="0.00"
+                      className="pl-7"
+                      value={formData.amount}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={() => router.back()}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  "Saving..."
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Case
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      </div>
+    </RouteGuard>
   );
 }

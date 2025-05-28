@@ -116,12 +116,12 @@ export default function QueuePage() {
         status: "completed" as const,
         completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       } : null
-      
+
       const emergencies = prev.tokens.filter(t => t.status === "waiting" && t.isEmergency)
       const regular = prev.tokens.filter(t => t.status === "waiting" && !t.isEmergency)
-      
+
       const nextPatient = emergencies[0] || regular[0]
-      
+
       return {
         ...prev,
         currentToken: nextPatient?.number || null,
@@ -139,28 +139,28 @@ export default function QueuePage() {
     setQueueData(prev => {
       const tokenToMove = prev.tokens.find(t => t.id === tokenId);
       if (!tokenToMove) return prev;
-  
+
       const otherTokens = prev.tokens.filter(t => t.id !== tokenId);
       const currentToken = prev.tokens.find(t => t.status === "current");
       const emergencyTokens = prev.tokens.filter(t => t.isEmergency && t.status === "waiting");
-  
+
       let insertPosition = 0;
-      
+
       if (currentToken) {
         insertPosition = otherTokens.findIndex(t => t.id === currentToken.id) + 1;
       }
-      
+
       if (emergencyTokens.length > 0) {
         const lastEmergency = emergencyTokens[emergencyTokens.length - 1];
         insertPosition = otherTokens.findIndex(t => t.id === lastEmergency.id) + 1;
       }
-  
+
       const newTokens = [
         ...otherTokens.slice(0, insertPosition),
         tokenToMove,
         ...otherTokens.slice(insertPosition)
       ];
-  
+
       return {
         ...prev,
         tokens: newTokens,
@@ -174,16 +174,16 @@ export default function QueuePage() {
     setQueueData(prev => {
       const token = prev.tokens.find(t => t.id === tokenId)
       if (!token) return prev
-      
+
       return {
         ...prev,
         tokens: prev.tokens.filter(t => t.id !== tokenId),
         onHoldTokens: [
           ...prev.onHoldTokens,
-          { 
-            ...token, 
+          {
+            ...token,
             status: "hold" as const,
-            holdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) 
+            holdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           }
         ],
         completedTokens: prev.completedTokens
@@ -195,7 +195,7 @@ export default function QueuePage() {
     setQueueData(prev => {
       const tokenToRecall = prev.onHoldTokens.find(t => t.id === tokenId)
       if (!tokenToRecall) return prev
-      
+
       return {
         ...prev,
         onHoldTokens: prev.onHoldTokens.filter(t => t.id !== tokenId),
@@ -214,7 +214,7 @@ export default function QueuePage() {
   const paginatedCompleted = queueData.completedTokens.slice((completedPage - 1) * rowsPerPage, completedPage * rowsPerPage)
 
   return (
-    <RouteGuard allowedRoles={["staff", "admin"]}>
+    <RouteGuard allowedRoles={["staff", "doctor"]}>
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Queue Management</h1>
@@ -286,7 +286,7 @@ export default function QueuePage() {
                   </TabsList>
                 </div>
               </CardHeader>
-              
+
               <CardContent>
                 <TabsContent value="active" className="space-y-4">
                   <div className="rounded-md border">
@@ -328,7 +328,7 @@ export default function QueuePage() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Select
@@ -402,7 +402,7 @@ export default function QueuePage() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Select
@@ -480,7 +480,7 @@ export default function QueuePage() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Select
