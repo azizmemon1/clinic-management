@@ -48,7 +48,7 @@ export default function NewTokenPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-  
+
     if (!selectedPatientId) {
       toast({
         title: "Error",
@@ -63,10 +63,10 @@ export default function NewTokenPage() {
     try {
       // Get current queue data from localStorage
       const queueData = JSON.parse(localStorage.getItem('queueData') || '{"tokens":[],"onHoldTokens":[],"completedTokens":[]}')
-      
+
       // Generate new token number (increment highest existing number)
       const allTokens = [...queueData.tokens, ...queueData.onHoldTokens, ...queueData.completedTokens]
-      const highestTokenNumber = allTokens.length > 0 
+      const highestTokenNumber = allTokens.length > 0
         ? Math.max(...allTokens.map(t => t.number))
         : 13 // Starting number if no tokens exist
       const newTokenNumber = highestTokenNumber + 1
@@ -111,7 +111,7 @@ export default function NewTokenPage() {
   }
 
   return (
-    <RouteGuard allowedRoles={["staff", "admin"]}>
+    <RouteGuard allowedRoles={["staff", "doctor"]}>
       <div className="p-6 max-w-2xl mx-auto">
         <div className="flex items-center mb-6">
           <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>

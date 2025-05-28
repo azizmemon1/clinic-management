@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { RouteGuard } from "@/components/route-guard";
 
 // Type
 interface Case {
@@ -117,10 +118,10 @@ export default function CaseDetailsPage() {
         if (!isMounted) return;
 
         if (!data) {
-          toast({ 
+          toast({
             title: "Case not found",
             description: `Case with ID ${caseId} could not be found. Redirecting to cases list.`,
-            variant: "destructive" 
+            variant: "destructive"
           });
           router.push("/cases");
           return;
@@ -128,7 +129,7 @@ export default function CaseDetailsPage() {
 
         setCaseData(data);
       } catch (error) {
-        toast({ 
+        toast({
           title: "Error loading case",
           description: "Please try again later",
           variant: "destructive"
@@ -152,13 +153,13 @@ export default function CaseDetailsPage() {
     try {
       setIsDeleting(true);
       await new Promise((resolve) => setTimeout(resolve, 500));
-      toast({ 
+      toast({
         title: "Case deleted successfully",
         description: `Patient case #${caseId} has been deleted`
       });
       router.push("/cases");
     } catch (err) {
-      toast({ 
+      toast({
         title: "Error deleting case",
         description: "Please try again later",
         variant: "destructive"
@@ -182,58 +183,60 @@ export default function CaseDetailsPage() {
   if (!caseData) return null;
 
   return (
-    <div className="p-6">
-    <Card className="flex flex-col">
-      <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.back()}
-            className="mr-4"
-          >
-            <ArrowLeft className="mr-2h-4 w-4" />
-            Back
-          </Button>
-          <div>
-            <CardTitle className="text-3xl font-bold">
-              Case #{caseData.id}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {caseData.patientName} • {new Date(caseData.date).toDateString()}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleEdit} disabled={isDeleting}>Edit</Button>
-          <Button 
-            variant="destructive" 
-            onClick={handleDelete}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Delete'
-            )}
-          </Button>
-        </div>
-      </CardHeader>
+    <RouteGuard allowedRoles={["doctor", "staff"]}>
+      <div className="p-6">
+        <Card className="flex flex-col">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.back()}
+                className="mr-4"
+              >
+                <ArrowLeft className="mr-2h-4 w-4" />
+                Back
+              </Button>
+              <div>
+                <CardTitle className="text-3xl font-bold">
+                  Case #{caseData.id}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {caseData.patientName} • {new Date(caseData.date).toDateString()}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleEdit} disabled={isDeleting}>Edit</Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </Button>
+            </div>
+          </CardHeader>
 
-      <Separator />
+          <Separator />
 
-      <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 p-6">
-        <Detail label="Patient Name" value={caseData.patientName} />
-        <Detail label="Date" value={new Date(caseData.date).toLocaleDateString()} />
-        <Detail label="Reason" value={caseData.reason} />
-        <Detail label="Emergency" value={caseData.isEmergency ? "Yes" : "No"} badge={caseData.isEmergency ? "destructive" : "default"} />
-        <Detail label="Amount" value={`₹${caseData.amount}`} />
-        <Detail label="Payment Status" badge={getPaymentVariant(caseData.paymentStatus)} value={caseData.paymentStatus} />
-      </CardContent>
-    </Card>
-    </div>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 p-6">
+            <Detail label="Patient Name" value={caseData.patientName} />
+            <Detail label="Date" value={new Date(caseData.date).toLocaleDateString()} />
+            <Detail label="Reason" value={caseData.reason} />
+            <Detail label="Emergency" value={caseData.isEmergency ? "Yes" : "No"} badge={caseData.isEmergency ? "destructive" : "default"} />
+            <Detail label="Amount" value={`₹${caseData.amount}`} />
+            <Detail label="Payment Status" badge={getPaymentVariant(caseData.paymentStatus)} value={caseData.paymentStatus} />
+          </CardContent>
+        </Card>
+      </div>
+    </RouteGuard>
   );
 }

@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, CreditCard, DollarSign, Search, Users } from "lucide-react"
+import { RouteGuard } from "@/components/route-guard"
 
 // Mock payment data
 const paymentData = {
@@ -137,210 +138,212 @@ export default function PaymentsPage() {
   }, 0)
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Payment Management</h1>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Today:</span>
-          <span className="font-medium">{new Date().toLocaleDateString()}</span>
+    <RouteGuard allowedRoles={["doctor"]}>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Payment Management</h1>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Today:</span>
+            <span className="font-medium">{new Date().toLocaleDateString()}</span>
+          </div>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${totalToday.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">{paymentData.today.length} transactions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${totalPending.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">{paymentData.pending.length} pending transactions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Family Dues</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${totalFamilyDues.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">{paymentData.familyDues.length} family groups</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <Tabs defaultValue="today" onValueChange={setActiveTab}>
+            <CardHeader>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <CardTitle>Payment Records</CardTitle>
+                <TabsList>
+                  <TabsTrigger value="today">Today's Payments</TabsTrigger>
+                  <TabsTrigger value="pending">Pending Payments</TabsTrigger>
+                  <TabsTrigger value="family">Family Dues</TabsTrigger>
+                </TabsList>
+              </div>
+              <CardDescription>
+                {activeTab === "today"
+                  ? "Payments received today"
+                  : activeTab === "pending"
+                    ? "Pending and partial payments"
+                    : "Monthly dues for family groups"}
+              </CardDescription>
+              <div className="relative mt-2">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={`Search ${activeTab === "family" ? "families" : "patients"}...`}
+                  className="pl-8 w-full md:w-80"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <TabsContent value="today">
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPayments.today.length > 0 ? (
+                        filteredPayments.today.map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell className="font-medium">
+                              <Link href={`/patients/${payment.patient.id}`} className="hover:underline">
+                                {payment.patient.name}
+                              </Link>
+                            </TableCell>
+                            <TableCell>{payment.type}</TableCell>
+                            <TableCell>${payment.amount.toFixed(2)}</TableCell>
+                            <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                            <TableCell>{payment.status !== "Paid" && <Button size="sm">Mark as Paid</Button>}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                            No payments found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="pending">
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPayments.pending.length > 0 ? (
+                        filteredPayments.pending.map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell className="font-medium">
+                              <Link href={`/patients/${payment.patient.id}`} className="hover:underline">
+                                {payment.patient.name}
+                              </Link>
+                            </TableCell>
+                            <TableCell>{payment.type}</TableCell>
+                            <TableCell>${payment.amount.toFixed(2)}</TableCell>
+                            <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
+                            <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                            <TableCell>
+                              <Button size="sm">Collect Payment</Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                            No pending payments found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="family">
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Family Group</TableHead>
+                        <TableHead>Members</TableHead>
+                        <TableHead>Monthly Due</TableHead>
+                        <TableHead>Last Payment</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPayments.familyDues.length > 0 ? (
+                        filteredPayments.familyDues.map((family) => (
+                          <TableRow key={family.id}>
+                            <TableCell className="font-medium">{family.name}</TableCell>
+                            <TableCell>{family.members}</TableCell>
+                            <TableCell>${family.monthlyDue.toFixed(2)}</TableCell>
+                            <TableCell>{new Date(family.lastPayment).toLocaleDateString()}</TableCell>
+                            <TableCell>{getStatusBadge(family.status)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" asChild>
+                                  <Link href={`/payments/family/${family.id}`}>
+                                    <Calendar className="mr-1 h-3 w-3" />
+                                    History
+                                  </Link>
+                                </Button>
+                                {family.status !== "Paid" && <Button size="sm">Collect</Button>}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
+                            No family groups found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            </CardContent>
+          </Tabs>
+        </Card>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalToday.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">{paymentData.today.length} transactions</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalPending.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">{paymentData.pending.length} pending transactions</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Family Dues</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalFamilyDues.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">{paymentData.familyDues.length} family groups</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <Tabs defaultValue="today" onValueChange={setActiveTab}>
-          <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <CardTitle>Payment Records</CardTitle>
-              <TabsList>
-                <TabsTrigger value="today">Today's Payments</TabsTrigger>
-                <TabsTrigger value="pending">Pending Payments</TabsTrigger>
-                <TabsTrigger value="family">Family Dues</TabsTrigger>
-              </TabsList>
-            </div>
-            <CardDescription>
-              {activeTab === "today"
-                ? "Payments received today"
-                : activeTab === "pending"
-                  ? "Pending and partial payments"
-                  : "Monthly dues for family groups"}
-            </CardDescription>
-            <div className="relative mt-2">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={`Search ${activeTab === "family" ? "families" : "patients"}...`}
-                className="pl-8 w-full md:w-80"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <TabsContent value="today">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Patient</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPayments.today.length > 0 ? (
-                      filteredPayments.today.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">
-                            <Link href={`/patients/${payment.patient.id}`} className="hover:underline">
-                              {payment.patient.name}
-                            </Link>
-                          </TableCell>
-                          <TableCell>{payment.type}</TableCell>
-                          <TableCell>${payment.amount.toFixed(2)}</TableCell>
-                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                          <TableCell>{payment.status !== "Paid" && <Button size="sm">Mark as Paid</Button>}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                          No payments found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="pending">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Patient</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPayments.pending.length > 0 ? (
-                      filteredPayments.pending.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">
-                            <Link href={`/patients/${payment.patient.id}`} className="hover:underline">
-                              {payment.patient.name}
-                            </Link>
-                          </TableCell>
-                          <TableCell>{payment.type}</TableCell>
-                          <TableCell>${payment.amount.toFixed(2)}</TableCell>
-                          <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                          <TableCell>
-                            <Button size="sm">Collect Payment</Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                          No pending payments found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="family">
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Family Group</TableHead>
-                      <TableHead>Members</TableHead>
-                      <TableHead>Monthly Due</TableHead>
-                      <TableHead>Last Payment</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredPayments.familyDues.length > 0 ? (
-                      filteredPayments.familyDues.map((family) => (
-                        <TableRow key={family.id}>
-                          <TableCell className="font-medium">{family.name}</TableCell>
-                          <TableCell>{family.members}</TableCell>
-                          <TableCell>${family.monthlyDue.toFixed(2)}</TableCell>
-                          <TableCell>{new Date(family.lastPayment).toLocaleDateString()}</TableCell>
-                          <TableCell>{getStatusBadge(family.status)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button size="sm" variant="outline" asChild>
-                                <Link href={`/payments/family/${family.id}`}>
-                                  <Calendar className="mr-1 h-3 w-3" />
-                                  History
-                                </Link>
-                              </Button>
-                              {family.status !== "Paid" && <Button size="sm">Collect</Button>}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">
-                          No family groups found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </CardContent>
-        </Tabs>
-      </Card>
-    </div>
+    </RouteGuard>
   )
 }

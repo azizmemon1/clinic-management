@@ -6,7 +6,7 @@ import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 
-type UserRole = "staff" | "doctor" | "admin"
+type UserRole = "staff" | "doctor"
 
 interface RouteGuardProps {
   children: React.ReactNode

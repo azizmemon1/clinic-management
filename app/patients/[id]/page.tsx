@@ -12,6 +12,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { toast } from "@/hooks/use-toast"
+import { RouteGuard } from "@/components/route-guard"
 
 // Mock patient data
 const patient = {
@@ -92,16 +93,16 @@ export default function PatientDetailPage() {
 
   const handleDeletePatient = async () => {
     setIsDeleting(true)
-    
+
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       toast({
         title: "Patient deleted successfully",
         description: `${patient.name}'s records have been removed.`,
       })
-      
+
       router.push("/patients")
     } catch (error) {
       toast({
@@ -119,223 +120,225 @@ export default function PatientDetailPage() {
   const recentCases = patient.cases.slice(0, 5)
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center mb-6">
-      <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
+    <RouteGuard allowedRoles={["doctor", "staff"]}>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center mb-6">
+          <Button variant="ghost" size="sm" className="mr-4" onClick={() => window.history.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-        <h1 className="text-3xl font-bold">{patient.name}</h1>
-      </div>
+          <h1 className="text-3xl font-bold">{patient.name}</h1>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Patient Information</CardTitle>
-            <CardDescription>Basic details and family group</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Full Name</p>
-              <p>{patient.name}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Phone Number</p>
-              <p>{patient.phone}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
-              <p>{new Date(patient.dob).toLocaleDateString()}</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Age</p>
-              <p>{new Date().getFullYear() - new Date(patient.dob).getFullYear()} years</p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Family Group</p>
-              {patient.familyGroup ? (
-                <Badge variant="outline">{patient.familyGroup}</Badge>
-              ) : (
-                <span className="text-muted-foreground text-sm">None</span>
-              )}
-            </div>
-
-            {/* Notes section with blinking red text */}
-            {patient.notes && (
-              <div className="pt-2">
-                <p className="text-sm font-medium text-muted-foreground">Notes</p>
-                <p className="text-red-500 text-lg animate-pulse">{patient.notes}</p>
-              </div>
-            )}
-
-            {/* Button group - all equal size */}
-            <div className="pt-4 grid grid-cols-2 gap-2">
-              <Button asChild className="w-full">
-                <Link href={`/queue/new?patientId=${patient.id}&referrer=/patients/${patient.id}`}>
-                  <Clock className="mr-2 h-4 w-4" />
-                  Token
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href={`/patients/${patient.id}/ledger`}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Ledger
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full" asChild>
-                <Link href={`/patients/${patient.id}/edit`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </Button>
-              <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button variant="destructive" className="w-full">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {patient.name}?</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p>Are you sure you want to delete this patient?</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              This will delete the patient records.
-            </p>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeletePatient}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete Patient"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <Tabs defaultValue="cases">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Patient History</CardTitle>
-                <TabsList>
-                  <TabsTrigger value="cases">Case History</TabsTrigger>
-                  <TabsTrigger value="family">Family Members</TabsTrigger>
-                </TabsList>
-              </div>
-              <CardDescription>View patient's medical history and family information</CardDescription>
+              <CardTitle>Patient Information</CardTitle>
+              <CardDescription>Basic details and family group</CardDescription>
             </CardHeader>
-            <CardContent>
-              <TabsContent value="cases" className="space-y-4">
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Reason</TableHead>
-                        <TableHead>Prescription</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {recentCases.map((caseItem) => (
-                        <TableRow key={caseItem.id}>
-                          <TableCell>{new Date(caseItem.date).toLocaleDateString()}</TableCell>
-                          <TableCell>{caseItem.reason}</TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {caseItem.prescription.map((med, i) => (
-                                <Badge key={i} variant="secondary">
-                                  {med}
-                                </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell>${caseItem.amount}</TableCell>
-                          <TableCell>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs ${getPaymentStatusColor(caseItem.paymentStatus)}`}
-                            >
-                              {caseItem.paymentStatus}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                <div className="flex justify-between items-center">
-                  <Button variant="outline" asChild>
-                    <Link href={`/patients/${patient.id}/cases`}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      View All Cases
-                    </Link>
-                  </Button>
-                  <Button asChild>
-                    <Link href={`/doctor/new-case/${patient.id}`}>Add New Case</Link>
-                  </Button>
-                </div>
-              </TabsContent>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Full Name</p>
+                <p>{patient.name}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Phone Number</p>
+                <p>{patient.phone}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
+                <p>{new Date(patient.dob).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Age</p>
+                <p>{new Date().getFullYear() - new Date(patient.dob).getFullYear()} years</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Family Group</p>
+                {patient.familyGroup ? (
+                  <Badge variant="outline">{patient.familyGroup}</Badge>
+                ) : (
+                  <span className="text-muted-foreground text-sm">None</span>
+                )}
+              </div>
 
-              <TabsContent value="family">
-                {patient.familyGroup && patient.familyMembers.length > 0 ? (
-                  <div className="space-y-4">
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {patient.familyMembers.map((member) => (
-                            <TableRow key={member.id}>
-                              <TableCell className="font-medium">{member.name}</TableCell>
-                              <TableCell>
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link href={`/patients/${member.id}`}>View</Link>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+              {/* Notes section with blinking red text */}
+              {patient.notes && (
+                <div className="pt-2">
+                  <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                  <p className="text-red-500 text-lg animate-pulse">{patient.notes}</p>
+                </div>
+              )}
+
+              {/* Button group - all equal size */}
+              <div className="pt-4 grid grid-cols-2 gap-2">
+                <Button asChild className="w-full">
+                  <Link href={`/queue/new?patientId=${patient.id}&referrer=/patients/${patient.id}`}>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Token
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link href={`/patients/${patient.id}/ledger`}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Ledger
+                  </Link>
+                </Button>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href={`/patients/${patient.id}/edit`}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </Button>
+                <Dialog open={open} onOpenChange={setOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete {patient.name}?</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <p>Are you sure you want to delete this patient?</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        This will delete the patient records.
+                      </p>
                     </div>
-                    <div className="flex justify-end">
-                      <Button asChild>
-                        <Link href={`/families/${patient.familyGroup.toLowerCase().replace(' ', '-')}`}>
-                          <Users className="mr-2 h-4 w-4" />
-                          View Full Family
-                        </Link>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" onClick={() => setOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeletePatient}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? "Deleting..." : "Delete Patient"}
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">
-                      {patient.familyGroup 
-                        ? "No family members linked to this patient." 
-                        : "Patient is not part of any family group."}
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </CardContent>
-          </Tabs>
-        </Card>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <Tabs defaultValue="cases">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Patient History</CardTitle>
+                  <TabsList>
+                    <TabsTrigger value="cases">Case History</TabsTrigger>
+                    <TabsTrigger value="family">Family Members</TabsTrigger>
+                  </TabsList>
+                </div>
+                <CardDescription>View patient's medical history and family information</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TabsContent value="cases" className="space-y-4">
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Reason</TableHead>
+                          <TableHead>Prescription</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recentCases.map((caseItem) => (
+                          <TableRow key={caseItem.id}>
+                            <TableCell>{new Date(caseItem.date).toLocaleDateString()}</TableCell>
+                            <TableCell>{caseItem.reason}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {caseItem.prescription.map((med, i) => (
+                                  <Badge key={i} variant="secondary">
+                                    {med}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell>${caseItem.amount}</TableCell>
+                            <TableCell>
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs ${getPaymentStatusColor(caseItem.paymentStatus)}`}
+                              >
+                                {caseItem.paymentStatus}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <Button variant="outline" asChild>
+                      <Link href={`/patients/${patient.id}/cases`}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        View All Cases
+                      </Link>
+                    </Button>
+                    <Button asChild>
+                      <Link href={`/doctor/new-case/${patient.id}`}>Add New Case</Link>
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="family">
+                  {patient.familyGroup && patient.familyMembers.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {patient.familyMembers.map((member) => (
+                              <TableRow key={member.id}>
+                                <TableCell className="font-medium">{member.name}</TableCell>
+                                <TableCell>
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link href={`/patients/${member.id}`}>View</Link>
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button asChild>
+                          <Link href={`/families/${patient.familyGroup.toLowerCase().replace(' ', '-')}`}>
+                            <Users className="mr-2 h-4 w-4" />
+                            View Full Family
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">
+                        {patient.familyGroup
+                          ? "No family members linked to this patient."
+                          : "Patient is not part of any family group."}
+                      </p>
+                    </div>
+                  )}
+                </TabsContent>
+              </CardContent>
+            </Tabs>
+          </Card>
+        </div>
       </div>
-    </div>
+    </RouteGuard>
   )
 }
