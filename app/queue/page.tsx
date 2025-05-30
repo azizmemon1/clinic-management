@@ -28,6 +28,7 @@ interface Token {
   status: TokenStatus
   holdAt?: string
   completedAt?: string
+  caseId?: number
 }
 
 interface QueueData {
@@ -50,9 +51,9 @@ const initialQueueData: QueueData = {
     { id: 11, number: 8, patient: { id: 11, name: "Alex Turner" }, isEmergency: false, status: "hold", holdAt: "10:30 AM" }
   ],
   completedTokens: [
-    { id: 6, number: 13, patient: { id: 6, name: "Jennifer Taylor" }, isEmergency: false, status: "completed", completedAt: "09:15 AM" },
-    { id: 7, number: 12, patient: { id: 7, name: "Robert Anderson" }, isEmergency: false, status: "completed", completedAt: "09:30 AM" },
-    { id: 8, number: 11, patient: { id: 8, name: "Lisa Thomas" }, isEmergency: true, status: "completed", completedAt: "09:45 AM" },
+    { id: 6, number: 13, patient: { id: 6, name: "Jennifer Taylor" }, isEmergency: false, status: "completed", completedAt: "09:15 AM", caseId: 101 },
+    { id: 7, number: 12, patient: { id: 7, name: "Robert Anderson" }, isEmergency: false, status: "completed", completedAt: "09:30 AM", caseId: 102 },
+    { id: 8, number: 11, patient: { id: 8, name: "Lisa Thomas" }, isEmergency: true, status: "completed", completedAt: "09:45 AM", caseId: 103 },
   ],
 }
 
@@ -114,7 +115,8 @@ export default function QueuePage() {
       const completedPatient = current ? {
         ...current,
         status: "completed" as const,
-        completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        caseId: Math.floor(Math.random() * 900) + 100 // Generate a random caseId between 100-999
       } : null
 
       const emergencies = prev.tokens.filter(t => t.status === "waiting" && t.isEmergency)
@@ -467,13 +469,23 @@ export default function QueuePage() {
                             <TableCell>{getStatusBadge(token.status, token.isEmergency)}</TableCell>
                             <TableCell>{token.completedAt}</TableCell>
                             <TableCell>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => router.push(`/patients/${token.patient.id}/today`)}
-                              >
-                                View Case
-                              </Button>
+                              {token.caseId ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => router.push(`/cases/${token.caseId}`)}
+                                >
+                                  View Case
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled
+                                >
+                                  No Case
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
