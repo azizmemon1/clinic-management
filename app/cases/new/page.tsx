@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
-import { Check, ChevronsUpDown, Save } from "lucide-react";
+import { Check, ChevronsUpDown, Save, AlertTriangle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   Command,
@@ -39,9 +39,9 @@ import { RouteGuard } from "@/components/route-guard";
 
 // Mock patients list for dropdown
 const patients = [
-  { id: 1, name: "John Smith", age: 38 },
-  { id: 2, name: "Jane Doe", age: 45 },
-  { id: 3, name: "Bob Johnson", age: 29 },
+  { id: 1, name: "John Smith", age: 38, phone: "555-123-4567", dob: "1985-06-15", note: "Patient has allergy to penicillin. Please be cautious when prescribing medication." },
+  { id: 2, name: "Jane Doe", age: 45, phone: "555-234-5678", dob: "1978-03-22", note: "" },
+  { id: 3, name: "Bob Johnson", age: 29, phone: "555-345-6789", dob: "1994-11-05", note: "Patient has history of high blood pressure." },
 ];
 
 // Mock medicines list
@@ -58,6 +58,14 @@ const medicines = [
   { id: 10, name: "Aspirin" },
 ];
 
+// Mock queue data for emergency alert
+const mockQueueData = {
+  waitingTokens: [
+    { id: 4, number: 17, patient: { id: 4, name: "Emily Davis" }, isEmergency: true, status: 'waiting' },
+    { id: 2, number: 15, patient: { id: 2, name: "Sarah Johnson" }, isEmergency: false, status: 'waiting' },
+  ]
+};
+
 interface FormDataState {
   patientId: number | null;
   reason: string;
@@ -67,15 +75,14 @@ interface FormDataState {
   amount: string;
 }
 
-
 export default function NewCasePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const patientIdFromQuery = searchParams.get('patientId');
 
-
   const [selectedPatient, setSelectedPatient] = useState<typeof patients[0] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
   const [formData, setFormData] = useState<FormDataState>({
     patientId: null,
     reason: "",
@@ -87,7 +94,6 @@ export default function NewCasePage() {
 
   useEffect(() => {
     if (patientIdFromQuery) {
-      // In a real app, you would fetch patient details from API
       const patient = patients.find(p => p.id === Number(patientIdFromQuery));
       if (patient) {
         setSelectedPatient(patient);
@@ -96,6 +102,15 @@ export default function NewCasePage() {
     }
   }, [patientIdFromQuery]);
 
+  // Simulate emergency case alert
+  useEffect(() => {
+    const hasEmergency = mockQueueData.waitingTokens.some(t => t.isEmergency);
+    if (hasEmergency) {
+      setShowEmergencyAlert(true);
+      const timer = setTimeout(() => setShowEmergencyAlert(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -156,7 +171,7 @@ export default function NewCasePage() {
         description: `New case has been added for ${selectedPatient?.name}.`,
       });
 
-      router.push(`/patients/${selectedPatient?.id}`); // TODO: Redirect to the patient's page add logic for patient id
+      router.push(`/patients/${selectedPatient?.id}`);
     } catch (error) {
       toast({
         title: "Error adding case",
@@ -171,6 +186,13 @@ export default function NewCasePage() {
   return (
     <RouteGuard allowedRoles={["doctor", "staff"]}>
       <div className="p-6">
+        {showEmergencyAlert && (
+          <div className="bg-red-500 text-white p-4 rounded-md flex items-center animate-pulse mb-6">
+            <AlertTriangle className="mr-2 h-5 w-5" />
+            <span>Emergency case detected in the queue! Please attend immediately.</span>
+          </div>
+        )}
+
         <div className="flex items-center mb-6">
           <Button
             variant="ghost"
@@ -217,18 +239,35 @@ export default function NewCasePage() {
               )}
 
               {selectedPatient && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Patient Name
-                    </p>
-                    <p className="font-medium">{selectedPatient.name}</p>
+                <>
+                  {selectedPatient.note && (
+                    <div className="p-4 bg-red-100 text-red-800 rounded-md animate-pulse">
+                      <div className="font-bold mb-1">Important Note:</div>
+                      <div>{selectedPatient.note}</div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Patient Name
+                      </p>
+                      <p className="font-medium">{selectedPatient.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Age</p>
+                      <p>{selectedPatient.age} years</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Phone</p>
+                      <p>{selectedPatient.phone}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
+                      <p>{selectedPatient.dob}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Age</p>
-                    <p>{selectedPatient.age} years</p>
-                  </div>
-                </div>
+                </>
               )}
 
               <div className="space-y-2">
