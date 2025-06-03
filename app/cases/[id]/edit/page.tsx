@@ -40,6 +40,7 @@ import {
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RouteGuard } from "@/components/route-guard";
+import { Combobox } from "@/components/ui/combobox";
 
 // Reuse the same mock data from new case page
 const medicines = [
@@ -55,6 +56,20 @@ const medicines = [
   { id: 10, name: "Aspirin" },
 ];
 
+// Mock previous reasons
+const previousReasons = [
+  "Headache",
+  "Fever",
+  "Cough",
+  "Stomach pain",
+  "Back pain",
+  "Dental checkup",
+  "Skin rash",
+  "Allergy",
+  "Cold",
+  "Sore throat"
+];
+
 interface FormDataState {
   patientId: number;
   patientName: string;
@@ -63,6 +78,7 @@ interface FormDataState {
   selectedMedicines: number[];
   paymentStatus: string;
   amount: string;
+  amountReceived: string;
   isEmergency: boolean;
 }
 
@@ -77,6 +93,7 @@ const mockCases = [
     selectedMedicines: [1, 3],
     paymentStatus: "Paid",
     amount: "75.00",
+    amountReceived: "75.00",
     isEmergency: false
   },
   {
@@ -86,22 +103,18 @@ const mockCases = [
     reason: "Dental checkup",
     notes: "Regular cleaning and examination",
     selectedMedicines: [2, 4],
-    paymentStatus: "Pending",
+    paymentStatus: "Custom",
     amount: "150.00",
+    amountReceived: "100.00",
     isEmergency: false
   }
 ];
 
 // Mock function to fetch case details
 const fetchCaseDetails = async (id: string): Promise<FormDataState | null> => {
-  // Simulate API call
   await new Promise(resolve => setTimeout(resolve, 1000));
-
   const caseDetails = mockCases.find(c => c.id === id);
-
-  if (!caseDetails) {
-    return null;
-  }
+  if (!caseDetails) return null;
 
   return {
     patientId: caseDetails.patientId,
@@ -111,6 +124,7 @@ const fetchCaseDetails = async (id: string): Promise<FormDataState | null> => {
     selectedMedicines: caseDetails.selectedMedicines,
     paymentStatus: caseDetails.paymentStatus,
     amount: caseDetails.amount,
+    amountReceived: caseDetails.amountReceived || caseDetails.amount,
     isEmergency: caseDetails.isEmergency
   };
 };
@@ -123,12 +137,18 @@ export default function EditCasePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormDataState | null>(null);
+  const [reasons, setReasons] = useState<string[]>(previousReasons);
 
   useEffect(() => {
     const loadCaseDetails = async () => {
       try {
         const caseDetails = await fetchCaseDetails(caseId);
         setFormData(caseDetails);
+        
+        // Add current reason to suggestions if it's new
+        if (caseDetails?.reason && !reasons.includes(caseDetails.reason)) {
+          setReasons(prev => [...prev, caseDetails.reason]);
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -152,7 +172,25 @@ export default function EditCasePage() {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => prev ? ({ ...prev, [name]: value }) : null);
+    setFormData((prev) => {
+      if (!prev) return null;
+      
+      const updatedData = { ...prev, [name]: value };
+      if (name === "paymentStatus" && value !== "Custom") {
+        updatedData.amountReceived = updatedData.amount;
+      }
+      
+      return updatedData;
+    });
+  };
+
+  const handleReasonSelect = (value: string) => {
+    setFormData(prev => prev ? ({ ...prev, reason: value }) : null);
+    
+    // Add to suggestions if it's a new reason
+    if (value && !reasons.includes(value)) {
+      setReasons(prev => [...prev, value]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -162,7 +200,6 @@ export default function EditCasePage() {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call to update case
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       toast({
@@ -185,29 +222,29 @@ export default function EditCasePage() {
   if (isLoading) {
     return (
       <RouteGuard allowedRoles={["doctor", "staff"]}>
-      <div className="p-6">
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />
-          Loading edit form...
+        <div className="p-6">
+          <div className="flex items-center justify-center min-h-screen">
+            <Loader2 className="h-5 w-5 animate-spin mr-2" />
+            Loading edit form...
+          </div>
         </div>
-      </div>
-    </RouteGuard>
+      </RouteGuard>
     );
   }
 
   if (!formData) {
     return (
       <RouteGuard allowedRoles={["doctor", "staff"]}>
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-2">
-            <FileX className="h-6 w-6 text-muted-foreground" />
-            <p className="text-lg text-muted-foreground">Case not found</p>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2">
+              <FileX className="h-6 w-6 text-muted-foreground" />
+              <p className="text-lg text-muted-foreground">Case not found</p>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">The case you are looking for does not exist</p>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">The case you are looking for does not exist</p>
         </div>
-      </div>
-    </RouteGuard>
+      </RouteGuard>
     );
   }
 
@@ -247,14 +284,12 @@ export default function EditCasePage() {
 
               <div className="space-y-2">
                 <Label htmlFor="reason">Reason for Visit</Label>
-                <Textarea
-                  id="reason"
-                  name="reason"
-                  placeholder="Enter the reason for the patient's visit"
+                <Combobox
+                  options={reasons.map(reason => ({ value: reason, label: reason }))}
                   value={formData.reason}
-                  onChange={handleChange}
-                  rows={3}
-                  required
+                  onChange={handleReasonSelect}
+                  createable
+                  placeholder="Select or enter a reason"
                 />
               </div>
 
@@ -367,7 +402,7 @@ export default function EditCasePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Partial">Partial</SelectItem>
+                      <SelectItem value="Custom">Custom</SelectItem>
                       <SelectItem value="Unpaid">Unpaid</SelectItem>
                     </SelectContent>
                   </Select>
@@ -390,6 +425,30 @@ export default function EditCasePage() {
                   </div>
                 </div>
               </div>
+
+              {formData.paymentStatus === "Custom" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="amountReceived">Amount Received</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5">$</span>
+                      <Input
+                        id="amountReceived"
+                        name="amountReceived"
+                        type="number"
+                        placeholder="0.00"
+                        className="pl-7"
+                        value={formData.amountReceived}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Balance: ${(parseFloat(formData.amount) - parseFloat(formData.amountReceived || "0")).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button type="button" variant="outline" onClick={() => router.back()}>
