@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,9 +22,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
-import { Check, ChevronsUpDown, Save, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Save, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { RouteGuard } from "@/components/route-guard";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Command,
   CommandEmpty,
@@ -35,16 +35,14 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { RouteGuard } from "@/components/route-guard";
 
-// Mock patients list for dropdown
+// Mock data
 const patients = [
   { id: 1, name: "John Smith", age: 38, phone: "555-123-4567", dob: "1985-06-15", note: "Patient has allergy to penicillin. Please be cautious when prescribing medication." },
   { id: 2, name: "Jane Doe", age: 45, phone: "555-234-5678", dob: "1978-03-22", note: "" },
   { id: 3, name: "Bob Johnson", age: 29, phone: "555-345-6789", dob: "1994-11-05", note: "Patient has history of high blood pressure." },
 ];
 
-// Mock medicines list
 const medicines = [
   { id: 1, name: "Paracetamol" },
   { id: 2, name: "Ibuprofen" },
@@ -66,6 +64,20 @@ const mockQueueData = {
   ]
 };
 
+// Mock previous reasons
+const previousReasons = [
+  "Headache",
+  "Fever",
+  "Cough",
+  "Stomach pain",
+  "Back pain",
+  "Dental checkup",
+  "Skin rash",
+  "Allergy",
+  "Cold",
+  "Sore throat"
+];
+
 interface FormDataState {
   patientId: number | null;
   reason: string;
@@ -73,6 +85,7 @@ interface FormDataState {
   selectedMedicines: number[];
   paymentStatus: string;
   amount: string;
+  amountReceived: string;
 }
 
 export default function NewCasePage() {
@@ -83,6 +96,7 @@ export default function NewCasePage() {
   const [selectedPatient, setSelectedPatient] = useState<typeof patients[0] | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
+  const [reasons, setReasons] = useState<string[]>(previousReasons);
   const [formData, setFormData] = useState<FormDataState>({
     patientId: null,
     reason: "",
@@ -90,6 +104,7 @@ export default function NewCasePage() {
     selectedMedicines: [],
     paymentStatus: "",
     amount: "",
+    amountReceived: "",
   });
 
   useEffect(() => {
@@ -112,13 +127,34 @@ export default function NewCasePage() {
     }
   }, []);
 
+  const handleReasonSelect = (value: string) => {
+    setFormData(prev => ({ ...prev, reason: value }));
+    
+    // Add to suggestions if it's a new reason
+    if (value && !reasons.includes(value)) {
+      setReasons(prev => [...prev, value]);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const updatedData = { ...prev, [name]: value };
+      
+      if (name === "paymentStatus") {
+        if (value !== "Custom") {
+          updatedData.amountReceived = "";
+        } else {
+          updatedData.amountReceived = updatedData.amount || "";
+        }
+      }
+      
+      return updatedData;
+    });
   };
 
   const handlePatientSelect = (patientId: string) => {
@@ -163,7 +199,6 @@ export default function NewCasePage() {
     setIsSubmitting(true);
 
     try {
-      // In a real app, this would be an API call to save the case
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       toast({
@@ -272,14 +307,12 @@ export default function NewCasePage() {
 
               <div className="space-y-2">
                 <Label htmlFor="reason">Reason for Visit</Label>
-                <Textarea
-                  id="reason"
-                  name="reason"
-                  placeholder="Enter the reason for the patient's visit"
+                <Combobox
+                  options={reasons.map(reason => ({ value: reason, label: reason }))}
                   value={formData.reason}
-                  onChange={handleChange}
-                  rows={3}
-                  required
+                  onChange={handleReasonSelect}
+                  createable
+                  placeholder="Select or enter a reason"
                 />
               </div>
 
@@ -388,7 +421,7 @@ export default function NewCasePage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Paid">Paid</SelectItem>
-                      <SelectItem value="Partial">Partial</SelectItem>
+                      <SelectItem value="Custom">Custom</SelectItem>
                       <SelectItem value="Unpaid">Unpaid</SelectItem>
                     </SelectContent>
                   </Select>
@@ -411,6 +444,32 @@ export default function NewCasePage() {
                   </div>
                 </div>
               </div>
+
+              {formData.paymentStatus === "Custom" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="amountReceived">Amount Received</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5">$</span>
+                      <Input
+                        id="amountReceived"
+                        name="amountReceived"
+                        type="number"
+                        placeholder="0.00"
+                        className="pl-7"
+                        value={formData.amountReceived}
+                        onChange={handleChange}
+                        required
+                      />
+                    </div>
+                    {formData.amount && (
+                      <p className="text-sm text-muted-foreground">
+                        Balance: ${(parseFloat(formData.amount) - parseFloat(formData.amountReceived || "0")).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button variant="outline" onClick={() => router.back()}>
