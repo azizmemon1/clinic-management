@@ -1,18 +1,22 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DollarSign, FileText, ArrowLeft, Search, Download, Plus } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
-import { RouteGuard } from "@/components/route-guard"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import * as XLSX from "xlsx"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DollarSign, FileText, ArrowLeft, Search, Download, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { RouteGuard } from "@/components/route-guard";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import * as XLSX from "xlsx";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, startOfDay, endOfDay, isSameDay, isWithinInterval, isAfter, isBefore } from "date-fns";
+import { DateRange } from "react-day-picker";
 
 // Mock patient data
 const mockPatient = {
@@ -20,7 +24,7 @@ const mockPatient = {
   name: "John Smith",
   phone: "555-1234",
   email: "john.smith@example.com"
-}
+};
 
 // Mock data
 const mockCases = [
@@ -28,95 +32,126 @@ const mockCases = [
   { id: 102, date: "2023-04-12", reason: "Lab Test", amount: 300, paid: 300, status: "Paid" },
   { id: 103, date: "2023-04-15", reason: "Medicine", amount: 400, paid: 200, status: "Partial" },
   { id: 104, date: "2023-04-18", reason: "Follow Up", amount: 200, paid: 0, status: "Unpaid" }
-]
+];
 
 const mockPayments = [
   { id: 1, date: "2023-04-10", amount: 500, type: "Cash", caseId: 101 },
   { id: 2, date: "2023-04-12", amount: 300, type: "Card", caseId: 102 },
   { id: 3, date: "2023-04-16", amount: 200, type: "Cash", caseId: 103 }
-]
+];
 
 const mockLedgerEntries = [
-  { id: 1, date: "2023-04-10", description: "Consultation", caseId: 101, debit: 500, credit: 500, balance: 0 },
-  { id: 2, date: "2023-04-12", description: "Lab Test", caseId: 102, debit: 300, credit: 300, balance: 0 },
-  { id: 3, date: "2023-04-15", description: "Medicine", caseId: 103, debit: 400, credit: 200, balance: 200 },
-  { id: 4, date: "2023-04-16", description: "Payment Received", caseId: null, debit: 0, credit: 200, balance: 0 }
-]
+  { id: 1, date: "2023-04-10", description: "Consultation", caseId: 101, type: "debit", amount: 500, balance: 500 },
+  { id: 2, date: "2023-04-10", description: "Payment Received", caseId: 101, type: "credit", amount: 500, balance: 0 },
+  { id: 3, date: "2023-04-12", description: "Lab Test", caseId: 102, type: "debit", amount: 300, balance: 300 },
+  { id: 4, date: "2023-04-12", description: "Payment Received", caseId: 102, type: "credit", amount: 300, balance: 0 },
+  { id: 5, date: "2023-04-15", description: "Medicine", caseId: 103, type: "debit", amount: 400, balance: 400 },
+  { id: 6, date: "2023-04-16", description: "Payment Received", caseId: 103, type: "credit", amount: 200, balance: 200 },
+  { id: 7, date: "2023-04-18", description: "Follow Up", caseId: 104, type: "debit", amount: 200, balance: 400 }
+];
 
 export default function PatientLedgerPage() {
-  const params = useParams()
-  const router = useRouter()
-  const patientId = params.patientId as string
+  const params = useParams();
+  const router = useRouter();
+  const patientId = params.patientId as string;
   
   // State for Cases tab
-  const [casesSearch, setCasesSearch] = useState("")
-  const [casesStatusFilter, setCasesStatusFilter] = useState("All")
-  const [casesPage, setCasesPage] = useState(1)
-  const casesPerPage = 5
+  const [casesSearch, setCasesSearch] = useState("");
+  const [casesStatusFilter, setCasesStatusFilter] = useState("All");
+  const [casesPage, setCasesPage] = useState(1);
+  const casesPerPage = 5;
   
   // State for Payments tab
-  const [paymentsSearch, setPaymentsSearch] = useState("")
-  const [paymentsPage, setPaymentsPage] = useState(1)
-  const paymentsPerPage = 5
+  const [paymentsSearch, setPaymentsSearch] = useState("");
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const paymentsPerPage = 5;
   
   // State for Ledger tab
-  const [ledgerSearch, setLedgerSearch] = useState("")
-  const [ledgerPage, setLedgerPage] = useState(1)
-  const ledgerPerPage = 5
+  const [ledgerSearch, setLedgerSearch] = useState("");
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const ledgerPerPage = 5;
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   // Filter cases
   const filteredCases = mockCases.filter(caseItem => {
     const matchesSearch = 
       caseItem.reason.toLowerCase().includes(casesSearch.toLowerCase()) ||
       caseItem.date.includes(casesSearch) ||
-      caseItem.amount.toString().includes(casesSearch)
-    const matchesStatus = casesStatusFilter === "All" || caseItem.status === casesStatusFilter
-    return matchesSearch && matchesStatus
-  })
+      caseItem.amount.toString().includes(casesSearch);
+    const matchesStatus = casesStatusFilter === "All" || caseItem.status === casesStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   // Filter payments
   const filteredPayments = mockPayments.filter(payment => 
     payment.date.includes(paymentsSearch) ||
-    payment.amount.toString().includes(paymentsSearch))
+    payment.amount.toString().includes(paymentsSearch));
 
   // Filter ledger entries
-  const filteredLedger = mockLedgerEntries.filter(entry => 
-    entry.description.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
-    entry.date.includes(ledgerSearch))
+  const filteredLedger = mockLedgerEntries.filter(entry => {
+    const matchesSearch = 
+      entry.description.toLowerCase().includes(ledgerSearch.toLowerCase()) ||
+      entry.date.includes(ledgerSearch);
+    
+    const entryDate = new Date(entry.date);
+    const from = dateRange?.from ? startOfDay(dateRange.from) : undefined;
+    const to = dateRange?.to ? endOfDay(dateRange.to) : undefined;
+    
+    let matchesDate = true;
+    if (from && to && isSameDay(from, to)) {
+      matchesDate = isSameDay(entryDate, from);
+    } else if (from && to) {
+      matchesDate = isWithinInterval(entryDate, { start: from, end: to });
+    } else if (from) {
+      matchesDate = isAfter(entryDate, from) || isSameDay(entryDate, from);
+    } else if (to) {
+      matchesDate = isBefore(entryDate, to) || isSameDay(entryDate, to);
+    }
+
+    return matchesSearch && matchesDate;
+  });
+
+  // Calculate running balance
+  const ledgerWithBalance = filteredLedger.reduce((acc, entry, index) => {
+    const previousBalance = index === 0 ? 0 : acc[index - 1].runningBalance;
+    const runningBalance = entry.type === "debit" 
+      ? previousBalance + entry.amount 
+      : previousBalance - entry.amount;
+    
+    return [...acc, { ...entry, runningBalance }];
+  }, [] as Array<typeof filteredLedger[0] & { runningBalance: number }>);
 
   // Pagination calculations
-  const casesTotalPages = Math.ceil(filteredCases.length / casesPerPage)
+  const casesTotalPages = Math.ceil(filteredCases.length / casesPerPage);
   const paginatedCases = filteredCases.slice(
     (casesPage - 1) * casesPerPage,
     casesPage * casesPerPage
-  )
+  );
 
-  const paymentsTotalPages = Math.ceil(filteredPayments.length / paymentsPerPage)
+  const paymentsTotalPages = Math.ceil(filteredPayments.length / paymentsPerPage);
   const paginatedPayments = filteredPayments.slice(
     (paymentsPage - 1) * paymentsPerPage,
     paymentsPage * paymentsPerPage
-  )
+  );
 
-  const ledgerTotalPages = Math.ceil(filteredLedger.length / ledgerPerPage)
-  const paginatedLedger = filteredLedger.slice(
+  const ledgerTotalPages = Math.ceil(ledgerWithBalance.length / ledgerPerPage);
+  const paginatedLedger = ledgerWithBalance.slice(
     (ledgerPage - 1) * ledgerPerPage,
     ledgerPage * ledgerPerPage
-  )
-
-  // Calculate running balance for each page
-  const calculatePageBalance = (items: typeof paginatedLedger, previousBalance: number) => {
-    return items.reduce((balance, item) => {
-      return balance + (item.debit - item.credit)
-    }, previousBalance)
-  }
+  );
 
   // Download ledger as Excel
   const downloadLedger = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredLedger)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger")
-    XLSX.writeFile(workbook, `${mockPatient.name}-ledger.xlsx`)
-  }
+    const worksheet = XLSX.utils.json_to_sheet(ledgerWithBalance);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger");
+    XLSX.writeFile(workbook, `${mockPatient.name}-ledger.xlsx`);
+  };
+
+  const resetDateFilter = () => {
+    setDateRange(undefined);
+    setLedgerPage(1);
+  };
 
   return (
     <RouteGuard allowedRoles={["doctor"]}>
@@ -152,7 +187,7 @@ export default function PatientLedgerPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="cases">
+            <Tabs defaultValue="ledger">
               <div className="flex justify-end mb-4">
                 <TabsList>
                   <TabsTrigger value="cases">
@@ -180,16 +215,16 @@ export default function PatientLedgerPage() {
                       className="pl-8"
                       value={casesSearch}
                       onChange={(e) => {
-                        setCasesSearch(e.target.value)
-                        setCasesPage(1)
+                        setCasesSearch(e.target.value);
+                        setCasesPage(1);
                       }}
                     />
                   </div>
                   <Select 
                     value={casesStatusFilter} 
                     onValueChange={(value) => {
-                      setCasesStatusFilter(value)
-                      setCasesPage(1)
+                      setCasesStatusFilter(value);
+                      setCasesPage(1);
                     }}
                   >
                     <SelectTrigger className="w-[180px]">
@@ -242,7 +277,7 @@ export default function PatientLedgerPage() {
                   </Table>
                 </div>
 
-                {/* Pagination - matching cases page style */}
+                {/* Pagination */}
                 <div className="flex flex-wrap justify-between items-center gap-4 mt-4 w-full px-4">
                   <div className="text-sm text-muted-foreground">
                     Showing {(casesPage - 1) * casesPerPage + 1}–
@@ -256,8 +291,7 @@ export default function PatientLedgerPage() {
                     <Select
                       value={String(casesPerPage)}
                       onValueChange={(val) => {
-                        // setRowsPerPage(Number(val))
-                        setCasesPage(1)
+                        setCasesPage(1);
                       }}
                     >
                       <SelectTrigger className="w-20 h-9">
@@ -325,8 +359,8 @@ export default function PatientLedgerPage() {
                       className="pl-8"
                       value={paymentsSearch}
                       onChange={(e) => {
-                        setPaymentsSearch(e.target.value)
-                        setPaymentsPage(1)
+                        setPaymentsSearch(e.target.value);
+                        setPaymentsPage(1);
                       }}
                     />
                   </div>
@@ -375,8 +409,7 @@ export default function PatientLedgerPage() {
                     <Select
                       value={String(paymentsPerPage)}
                       onValueChange={(val) => {
-                        // setRowsPerPage(Number(val))
-                        setPaymentsPage(1)
+                        setPaymentsPage(1);
                       }}
                     >
                       <SelectTrigger className="w-20 h-9">
@@ -444,10 +477,47 @@ export default function PatientLedgerPage() {
                       className="pl-8"
                       value={ledgerSearch}
                       onChange={(e) => {
-                        setLedgerSearch(e.target.value)
-                        setLedgerPage(1)
+                        setLedgerSearch(e.target.value);
+                        setLedgerPage(1);
                       }}
                     />
+                  </div>
+                  <div className="flex gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="whitespace-nowrap">
+                          {dateRange?.from && dateRange?.to
+                            ? `${format(dateRange.from, "MMM d")} - ${format(
+                                dateRange.to,
+                                "MMM d"
+                              )}`
+                            : dateRange?.from
+                              ? format(dateRange.from, "MMM d")
+                              : "Select Date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="range"
+                          selected={dateRange}
+                          onSelect={setDateRange}
+                          numberOfMonths={1}
+                        />
+                        <div className="flex items-center justify-end p-2 border-t">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={resetDateFilter}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Button variant="outline" onClick={downloadLedger}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Ledger
+                    </Button>
                   </div>
                 </div>
 
@@ -458,8 +528,8 @@ export default function PatientLedgerPage() {
                         <TableHead>Date</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead>Case</TableHead>
-                        <TableHead>Debit</TableHead>
-                        <TableHead>Credit</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
                         <TableHead>Balance</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -475,24 +545,19 @@ export default function PatientLedgerPage() {
                               </Link>
                             ) : "N/A"}
                           </TableCell>
-                          <TableCell className={entry.debit > 0 ? "text-red-500" : ""}>
-                            {entry.debit > 0 ? `$${entry.debit.toFixed(2)}` : "-"}
+                          <TableCell>
+                            <Badge variant={entry.type === "debit" ? "destructive" : "default"}>
+                              {entry.type}
+                            </Badge>
                           </TableCell>
-                          <TableCell className={entry.credit > 0 ? "text-green-500" : ""}>
-                            {entry.credit > 0 ? `$${entry.credit.toFixed(2)}` : "-"}
+                          <TableCell className={entry.type === "debit" ? "text-red-500" : "text-green-500"}>
+                            {entry.type === "debit" ? `-$${entry.amount.toFixed(2)}` : `+$${entry.amount.toFixed(2)}`}
                           </TableCell>
-                          <TableCell className={entry.balance > 0 ? "text-red-500" : "text-green-500"}>
-                            ${entry.balance.toFixed(2)}
+                          <TableCell className={entry.runningBalance > 0 ? "text-red-500" : "text-green-500"}>
+                            ${entry.runningBalance.toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))}
-                      {/* Page Balance Row */}
-                      <TableRow className="bg-muted/50">
-                        <TableCell colSpan={5} className="text-right font-medium">Page Balance:</TableCell>
-                        <TableCell className="font-medium">
-                          ${calculatePageBalance(paginatedLedger, 0).toFixed(2)}
-                        </TableCell>
-                      </TableRow>
                     </TableBody>
                   </Table>
                 </div>
@@ -501,7 +566,7 @@ export default function PatientLedgerPage() {
                 <div className="flex flex-wrap justify-between items-center gap-4 mt-4 w-full px-4">
                   <div className="text-sm text-muted-foreground">
                     Showing {(ledgerPage - 1) * ledgerPerPage + 1}–
-                    {Math.min(ledgerPage * ledgerPerPage, filteredLedger.length)} of {filteredLedger.length}
+                    {Math.min(ledgerPage * ledgerPerPage, ledgerWithBalance.length)} of {ledgerWithBalance.length}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -511,8 +576,7 @@ export default function PatientLedgerPage() {
                     <Select
                       value={String(ledgerPerPage)}
                       onValueChange={(val) => {
-                        // setRowsPerPage(Number(val))
-                        setLedgerPage(1)
+                        setLedgerPage(1);
                       }}
                     >
                       <SelectTrigger className="w-20 h-9">
@@ -574,5 +638,5 @@ export default function PatientLedgerPage() {
         </Card>
       </div>
     </RouteGuard>
-  )
+  );
 }
