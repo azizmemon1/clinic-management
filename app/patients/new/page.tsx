@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,10 +21,28 @@ const familyGroups = [
   { id: "4", name: "Thomas Family" },
 ]
 
+// Mock function to fetch existing patient names
+async function fetchPatientNames(): Promise<string[]> {
+  // In a real app, this would be an API call to fetch existing patient names
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve([
+        "John Doe",
+        "Jane Smith",
+        "Robert Johnson",
+        "Emily Davis",
+        "Michael Wilson"
+      ])
+    }, 500)
+  })
+}
+
 export default function NewPatientPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [existingNames, setExistingNames] = useState<string[]>([])
+  const [nameError, setNameError] = useState("")
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -33,9 +51,21 @@ export default function NewPatientPage() {
     notes: ""
   })
 
+  useEffect(() => {
+    // Fetch existing patient names when component mounts
+    fetchPatientNames().then(names => {
+      setExistingNames(names)
+    })
+  }, [])
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear name error when typing
+    if (name === "name" && nameError) {
+      setNameError("")
+    }
   };
 
   const handleSelectChange = (value: string) => {
@@ -44,6 +74,13 @@ export default function NewPatientPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Check if name already exists
+    if (existingNames.includes(formData.name.trim())) {
+      setNameError("This name is already in use. Please choose a different name.")
+      return
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -88,31 +125,73 @@ export default function NewPatientPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  placeholder="Enter patient's full name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
+                <div>
+                  <Input
+                    id="name"
+                    name="name"
+                    list="patientNames"
+                    placeholder="Enter patient's full name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                  />
+                  <datalist id="patientNames">
+                    {existingNames.map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                </div>
+                {nameError && <p className="text-sm font-medium text-destructive">{nameError}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">Phone Number (Optional)</Label>
                 <Input
                   id="phone"
                   name="phone"
                   placeholder="Enter phone number"
                   value={formData.phone}
                   onChange={handleChange}
-                  required
+                  type="tel"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dob">Date of Birth</Label>
-                <Input id="dob" name="dob" type="date" value={formData.dob} onChange={handleChange} required />
+                <Label htmlFor="dob">Age / Date of Birth (Optional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="dob"
+                    name="dob"
+                    type="date"
+                    value={formData.dob}
+                    onChange={handleChange}
+                    className="flex-1"
+                  />
+                  <span className="flex items-center text-sm text-muted-foreground">or</span>
+                  <Input
+                    id="age"
+                    name="age"
+                    type="number"
+                    placeholder="Age"
+                    min="0"
+                    max="120"
+                    onChange={(e) => {
+                      // Convert age to approximate date of birth
+                      if (e.target.value) {
+                        const age = parseInt(e.target.value)
+                        const currentYear = new Date().getFullYear()
+                        const birthYear = currentYear - age
+                        setFormData(prev => ({
+                          ...prev,
+                          dob: `${birthYear}-01-01` // Default to Jan 1st of the birth year
+                        }))
+                      } else {
+                        setFormData(prev => ({ ...prev, dob: "" }))
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

@@ -9,10 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, CreditCard, DollarSign, Search, Users, FileText } from "lucide-react"
+import { CreditCard, DollarSign, Search, Users, FileText } from "lucide-react"
+import { Calendar } from "@/components/ui/calendar"
 import { RouteGuard } from "@/components/route-guard"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { format, startOfDay, endOfDay, isSameDay, isWithinInterval, isAfter, isBefore } from "date-fns"
+import { DateRange } from "react-day-picker"
 
 // Enhanced mock data
 const mockTodayCases = [
@@ -73,6 +76,39 @@ const mockPendingPayments = [
     amountReceived: 100,
     paymentStatus: "Partial",
     isEmergency: false
+  },
+  {
+    id: 106,
+    patientId: 5,
+    patientName: "Robert Wilson",
+    date: "2023-04-12",
+    reason: "Annual checkup",
+    amount: 350,
+    amountReceived: 0,
+    paymentStatus: "Unpaid",
+    isEmergency: false
+  },
+  {
+    id: 107,
+    patientId: 6,
+    patientName: "Lisa Taylor",
+    date: "2023-04-11",
+    reason: "Vaccination",
+    amount: 150,
+    amountReceived: 150,
+    paymentStatus: "Paid",
+    isEmergency: false
+  },
+  {
+    id: 108,
+    patientId: 7,
+    patientName: "David Clark",
+    date: "2023-04-10",
+    reason: "Physical therapy",
+    amount: 600,
+    amountReceived: 300,
+    paymentStatus: "Partial",
+    isEmergency: false
   }
 ]
 
@@ -94,6 +130,24 @@ const mockFamilyDues = [
     paidAmount: 800,
     balance: 0,
     lastPayment: "2023-04-12"
+  },
+  {
+    id: 3,
+    familyName: "Brown Family",
+    members: 3,
+    totalDue: 900,
+    paidAmount: 450,
+    balance: 450,
+    lastPayment: "2023-04-08"
+  },
+  {
+    id: 4,
+    familyName: "Wilson Family",
+    members: 2,
+    totalDue: 500,
+    paidAmount: 500,
+    balance: 0,
+    lastPayment: "2023-04-05"
   }
 ]
 
@@ -130,6 +184,13 @@ export default function PaymentsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("All")
   const [familyStatusFilter, setFamilyStatusFilter] = useState("All")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
+  
+  // Pagination states
+  const [todayPage, setTodayPage] = useState(1)
+  const [pendingPage, setPendingPage] = useState(1)
+  const [familyPage, setFamilyPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(5)
 
   const filteredTodayCases = mockTodayCases.filter(caseItem => {
     const matchesSearch = caseItem.patientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -142,7 +203,23 @@ export default function PaymentsPage() {
     const matchesSearch = payment.patientName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          payment.reason.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === "All" || payment.paymentStatus === statusFilter
-    return matchesSearch && matchesStatus
+    
+    const paymentDate = new Date(payment.date)
+    const from = dateRange?.from ? startOfDay(dateRange.from) : undefined
+    const to = dateRange?.to ? endOfDay(dateRange.to) : undefined
+    
+    let matchesDate = true
+    if (from && to && isSameDay(from, to)) {
+      matchesDate = isSameDay(paymentDate, from)
+    } else if (from && to) {
+      matchesDate = isWithinInterval(paymentDate, { start: from, end: to })
+    } else if (from) {
+      matchesDate = isAfter(paymentDate, from) || isSameDay(paymentDate, from)
+    } else if (to) {
+      matchesDate = isBefore(paymentDate, to) || isSameDay(paymentDate, to)
+    }
+
+    return matchesSearch && matchesStatus && matchesDate
   })
 
   const filteredFamilyDues = mockFamilyDues.filter(family => {
@@ -152,6 +229,29 @@ export default function PaymentsPage() {
                          (familyStatusFilter === "Unpaid" && family.balance > 0)
     return matchesSearch && matchesStatus
   })
+
+  // Pagination calculations
+  const todayTotalPages = Math.ceil(filteredTodayCases.length / rowsPerPage)
+  const paginatedTodayCases = filteredTodayCases.slice(
+    (todayPage - 1) * rowsPerPage,
+    todayPage * rowsPerPage
+  )
+
+  const pendingTotalPages = Math.ceil(filteredPendingPayments.length / rowsPerPage)
+  const paginatedPendingPayments = filteredPendingPayments.slice(
+    (pendingPage - 1) * rowsPerPage,
+    pendingPage * rowsPerPage
+  )
+
+  const familyTotalPages = Math.ceil(filteredFamilyDues.length / rowsPerPage)
+  const paginatedFamilyDues = filteredFamilyDues.slice(
+    (familyPage - 1) * rowsPerPage,
+    familyPage * rowsPerPage
+  )
+
+  const resetDateFilter = () => {
+    setDateRange(undefined)
+  }
 
   return (
     <RouteGuard allowedRoles={["doctor"]}>
@@ -165,78 +265,78 @@ export default function PaymentsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Today's Cases</CardTitle>
-      <DollarSign className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{mockTodayCases.length}</div>
-      <p className="text-xs text-muted-foreground">
-        {mockTodayCases.filter(c => c.paymentStatus === "Paid").length} paid
-      </p>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Today's Cases</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{mockTodayCases.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {mockTodayCases.filter(c => c.paymentStatus === "Paid").length} paid
+              </p>
+            </CardContent>
+          </Card>
 
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-      <CreditCard className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">
-        ${mockPendingPayments.reduce((sum, payment) => sum + (payment.amount - payment.amountReceived), 0)}
-      </div>
-      <p className="text-xs text-muted-foreground">{mockPendingPayments.length} cases</p>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${mockPendingPayments.reduce((sum, payment) => sum + (payment.amount - payment.amountReceived), 0)}
+              </div>
+              <p className="text-xs text-muted-foreground">{mockPendingPayments.length} cases</p>
+            </CardContent>
+          </Card>
 
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Family Dues</CardTitle>
-      <Users className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">
-        ${mockFamilyDues.reduce((sum, family) => sum + family.balance, 0)}
-      </div>
-      <p className="text-xs text-muted-foreground">{mockFamilyDues.length} families</p>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Family Dues</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${mockFamilyDues.reduce((sum, family) => sum + family.balance, 0)}
+              </div>
+              <p className="text-xs text-muted-foreground">{mockFamilyDues.length} families</p>
+            </CardContent>
+          </Card>
 
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-      <DollarSign className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">
-        ${mockTodayCases.reduce((sum, c) => sum + c.amountReceived, 0) +
-          mockPendingPayments.reduce((sum, p) => sum + p.amountReceived, 0) +
-          mockFamilyDues.reduce((sum, f) => sum + f.paidAmount, 0)}
-      </div>
-      <p className="text-xs text-muted-foreground">Today's collection</p>
-    </CardContent>
-  </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${mockTodayCases.reduce((sum, c) => sum + c.amountReceived, 0) +
+                  mockPendingPayments.reduce((sum, p) => sum + p.amountReceived, 0) +
+                  mockFamilyDues.reduce((sum, f) => sum + f.paidAmount, 0)}
+              </div>
+              <p className="text-xs text-muted-foreground">Today's collection</p>
+            </CardContent>
+          </Card>
 
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <CardTitle className="text-sm font-medium">Ledger Access</CardTitle>
-      <FileText className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">
-        {mockIndividualLedgers.length + mockFamilyLedgers.length}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        {mockIndividualLedgers.length} individual, {mockFamilyLedgers.length} family
-      </p>
-      <Button variant="link" className="p-0 h-auto" asChild>
-        <Link href="/payments/ledger">View All Ledgers</Link>
-      </Button>
-    </CardContent>
-  </Card>
-</div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Ledger Access</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {mockIndividualLedgers.length + mockFamilyLedgers.length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {mockIndividualLedgers.length} individual, {mockFamilyLedgers.length} family
+              </p>
+              <Button variant="link" className="p-0 h-auto" asChild>
+                <Link href="/payments/ledger">View All Ledgers</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <Tabs defaultValue="today" onValueChange={setActiveTab}>
@@ -247,7 +347,6 @@ export default function PaymentsPage() {
                   <TabsTrigger value="today">Today's Cases</TabsTrigger>
                   <TabsTrigger value="pending">Pending Payments</TabsTrigger>
                   <TabsTrigger value="family">Family Dues</TabsTrigger>
-                  <TabsTrigger value="ledger">Ledger</TabsTrigger>
                 </TabsList>
               </div>
               <CardDescription>
@@ -255,9 +354,7 @@ export default function PaymentsPage() {
                   ? "Cases created today"
                   : activeTab === "pending"
                     ? "Pending and partial payments"
-                    : activeTab === "family"
-                      ? "Family monthly dues"
-                      : "Complete payment ledger"}
+                    : "Family monthly dues"}
               </CardDescription>
               <div className="flex items-center gap-2 mt-2">
                 <div className="relative flex-1">
@@ -266,11 +363,58 @@ export default function PaymentsPage() {
                     placeholder={`Search ${activeTab === "family" ? "families" : "patients"}...`}
                     className="pl-8"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      // Reset to first page when searching
+                      if (activeTab === "today") setTodayPage(1)
+                      if (activeTab === "pending") setPendingPage(1)
+                      if (activeTab === "family") setFamilyPage(1)
+                    }}
                   />
                 </div>
-                {activeTab !== "family" && activeTab !== "ledger" && (
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                {activeTab === "pending" && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="whitespace-nowrap">
+                        {dateRange?.from && dateRange?.to
+                          ? `${format(dateRange.from, "MMM d")} - ${format(
+                              dateRange.to,
+                              "MMM d"
+                            )}`
+                          : dateRange?.from
+                            ? format(dateRange.from, "MMM d")
+                            : "Select Date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="range"
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        numberOfMonths={1}
+                      />
+                      <div className="flex items-center justify-end p-2 border-t">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={resetDateFilter}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {activeTab !== "family" && (
+                  <Select 
+                    value={statusFilter} 
+                    onValueChange={(value) => {
+                      setStatusFilter(value)
+                      // Reset to first page when changing filter
+                      if (activeTab === "today") setTodayPage(1)
+                      if (activeTab === "pending") setPendingPage(1)
+                    }}
+                  >
                     <SelectTrigger className="w-[120px]">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
@@ -283,7 +427,13 @@ export default function PaymentsPage() {
                   </Select>
                 )}
                 {activeTab === "family" && (
-                  <Select value={familyStatusFilter} onValueChange={setFamilyStatusFilter}>
+                  <Select 
+                    value={familyStatusFilter} 
+                    onValueChange={(value) => {
+                      setFamilyStatusFilter(value)
+                      setFamilyPage(1)
+                    }}
+                  >
                     <SelectTrigger className="w-[120px]">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
@@ -312,7 +462,7 @@ export default function PaymentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredTodayCases.map((caseItem) => (
+                      {paginatedTodayCases.map((caseItem) => (
                         <TableRow key={caseItem.id}>
                           <TableCell className="font-medium">
                             <Link href={`/patients/${caseItem.patientId}`} className="hover:underline">
@@ -348,6 +498,77 @@ export default function PaymentsPage() {
                     </TableBody>
                   </Table>
                 </div>
+                {/* Pagination */}
+                <div className="flex flex-wrap justify-between items-center gap-4 mt-4 w-full px-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {(todayPage - 1) * rowsPerPage + 1}–
+                    {Math.min(todayPage * rowsPerPage, filteredTodayCases.length)} of {filteredTodayCases.length}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Rows per page:
+                    </span>
+                    <Select
+                      value={String(rowsPerPage)}
+                      onValueChange={(val) => {
+                        setRowsPerPage(Number(val))
+                        setTodayPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 20, 50].map((count) => (
+                          <SelectItem key={count} value={String(count)}>
+                            {count}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTodayPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={todayPage === 1}
+                    >
+                      Previous
+                    </Button>
+
+                    <Select
+                      value={String(todayPage)}
+                      onValueChange={(val) => setTodayPage(Number(val))}
+                    >
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: todayTotalPages }, (_, i) => (
+                          <SelectItem key={i} value={String(i + 1)}>
+                            {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <span className="text-sm text-muted-foreground">
+                      of {todayTotalPages}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setTodayPage((prev) => Math.min(prev + 1, todayTotalPages))
+                      }
+                      disabled={todayPage === todayTotalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="pending" className="space-y-4">
@@ -366,7 +587,7 @@ export default function PaymentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredPendingPayments.map((payment) => (
+                      {paginatedPendingPayments.map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell className="font-medium">
                             <Link href={`/patients/${payment.patientId}`} className="hover:underline">
@@ -403,6 +624,77 @@ export default function PaymentsPage() {
                     </TableBody>
                   </Table>
                 </div>
+                {/* Pagination */}
+                <div className="flex flex-wrap justify-between items-center gap-4 mt-4 w-full px-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {(pendingPage - 1) * rowsPerPage + 1}–
+                    {Math.min(pendingPage * rowsPerPage, filteredPendingPayments.length)} of {filteredPendingPayments.length}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Rows per page:
+                    </span>
+                    <Select
+                      value={String(rowsPerPage)}
+                      onValueChange={(val) => {
+                        setRowsPerPage(Number(val))
+                        setPendingPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 20, 50].map((count) => (
+                          <SelectItem key={count} value={String(count)}>
+                            {count}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPendingPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={pendingPage === 1}
+                    >
+                      Previous
+                    </Button>
+
+                    <Select
+                      value={String(pendingPage)}
+                      onValueChange={(val) => setPendingPage(Number(val))}
+                    >
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: pendingTotalPages }, (_, i) => (
+                          <SelectItem key={i} value={String(i + 1)}>
+                            {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <span className="text-sm text-muted-foreground">
+                      of {pendingTotalPages}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setPendingPage((prev) => Math.min(prev + 1, pendingTotalPages))
+                      }
+                      disabled={pendingPage === pendingTotalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="family" className="space-y-4">
@@ -421,7 +713,7 @@ export default function PaymentsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredFamilyDues.map((family) => (
+                      {paginatedFamilyDues.map((family) => (
                         <TableRow key={family.id}>
                           <TableCell className="font-medium">{family.familyName}</TableCell>
                           <TableCell>{family.members}</TableCell>
@@ -448,81 +740,77 @@ export default function PaymentsPage() {
                     </TableBody>
                   </Table>
                 </div>
-              </TabsContent>
+                {/* Pagination */}
+                <div className="flex flex-wrap justify-between items-center gap-4 mt-4 w-full px-4">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {(familyPage - 1) * rowsPerPage + 1}–
+                    {Math.min(familyPage * rowsPerPage, filteredFamilyDues.length)} of {filteredFamilyDues.length}
+                  </div>
 
-              <TabsContent value="ledger" className="space-y-4">
-                <Tabs defaultValue="individual" className="mb-4">
-                  <TabsList>
-                    <TabsTrigger value="individual">Individual Ledger</TabsTrigger>
-                    <TabsTrigger value="family">Family Ledger</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="individual">
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Patient</TableHead>
-                            <TableHead>Current Balance</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {mockIndividualLedgers.map((ledger) => (
-                            <TableRow key={ledger.id}>
-                              <TableCell className="font-medium">
-                                <Link href={`/patients/${ledger.patientId}`} className="hover:underline">
-                                  {ledger.patientName}
-                                </Link>
-                              </TableCell>
-                              <TableCell className={ledger.currentBalance > 0 ? "text-red-500" : "text-green-500"}>
-                                ${ledger.currentBalance.toFixed(2)}
-                              </TableCell>
-                              <TableCell>
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link href={`/payments/ledger/${ledger.patientId}`}>
-                                    <FileText className="mr-1 h-3 w-3" />
-                                    View Ledger
-                                  </Link>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="family">
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Family</TableHead>
-                            <TableHead>Current Balance</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {mockFamilyLedgers.map((ledger) => (
-                            <TableRow key={ledger.id}>
-                              <TableCell className="font-medium">{ledger.familyName}</TableCell>
-                              <TableCell className={ledger.currentBalance > 0 ? "text-red-500" : "text-green-500"}>
-                                ${ledger.currentBalance.toFixed(2)}
-                              </TableCell>
-                              <TableCell>
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link href={`/payments/family-ledger/${ledger.familyId}`}>
-                                    <FileText className="mr-1 h-3 w-3" />
-                                    View Ledger
-                                  </Link>
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Rows per page:
+                    </span>
+                    <Select
+                      value={String(rowsPerPage)}
+                      onValueChange={(val) => {
+                        setRowsPerPage(Number(val))
+                        setFamilyPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 20, 50].map((count) => (
+                          <SelectItem key={count} value={String(count)}>
+                            {count}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFamilyPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={familyPage === 1}
+                    >
+                      Previous
+                    </Button>
+
+                    <Select
+                      value={String(familyPage)}
+                      onValueChange={(val) => setFamilyPage(Number(val))}
+                    >
+                      <SelectTrigger className="w-20 h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: familyTotalPages }, (_, i) => (
+                          <SelectItem key={i} value={String(i + 1)}>
+                            {i + 1}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <span className="text-sm text-muted-foreground">
+                      of {familyTotalPages}
+                    </span>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setFamilyPage((prev) => Math.min(prev + 1, familyTotalPages))
+                      }
+                      disabled={familyPage === familyTotalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
               </TabsContent>
             </CardContent>
           </Tabs>
